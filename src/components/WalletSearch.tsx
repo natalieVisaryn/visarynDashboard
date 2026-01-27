@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import  { useState } from "react";
 import { useMenuBar } from "./menuBar/useMenuBar";
 
 export default function WalletScreenResultsTable() {
