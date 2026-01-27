@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, checkAuth, hasCookie } from '../utils/auth';
+import { login, hasCookie } from '../utils/auth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
