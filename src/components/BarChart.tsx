@@ -99,7 +99,7 @@ export default function BarChart({ data, title }: BarChartProps) {
         })}
 
         {/* Horizontal grid lines */}
-        {yAxisLabels.map((labelValue, index) => {
+        {yAxisLabels.map(( index) => {
           const yPosition =
             chartHeight - (index / (yAxisLabels.length - 1)) * chartHeight;
           return (
