@@ -1,0 +1,71 @@
+:root {
+  --black: #191b1f;
+  --grey: #30343b;
+  --orange: #ff663b;
+  --blue: #85cfe5;
+  --dark-blue: #25282f;
+  --very-dark-blue: #1b1e23;
+  --input-field-blue: #2f333b;
+  --input-field-border: #464c56;
+  --textWhite: #f1f2f4;
+  --text-grey-white: #e3e5ea;
+  --textGrey: #a9b1c0;
+  --text-dark-blue: #09222a;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background-color: var(--very-dark-blue);
+  font-family: "Hero New", sans-serif;
+  font-weight: 400;
+  font-style: Regular;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: 0%;
+}
+
+#root {
+  min-height: 100vh;
+  background-color: var(--very-dark-blue);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::placeholder {
+  color: var(--textGrey);
+}
+
+::-webkit-input-placeholder {
+  color: var(--textGrey);
+}
+
+::-moz-placeholder {
+  color: var(--textGrey);
+  opacity: 1;
+}
+
+:-ms-input-placeholder {
+  color: var(--textGrey);
+}
+
+/* Hide spinner arrows on number input */
+.page-number-input::-webkit-inner-spin-button,
+.page-number-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+.page-number-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

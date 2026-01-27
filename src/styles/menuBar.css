@@ -1,0 +1,196 @@
+.menuBarClosedContainer {
+  width: 90px;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 20px;
+  gap: 20px;
+}
+
+.menuBarOpenContainer {
+  width: 240px;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+}
+
+.menuBarLogoContainer {
+  position: absolute;
+  top: 16px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.menuBarLogo {
+  width: 200px;
+  height: 50px;
+  object-fit: contain;
+}
+
+.dashboardItemContainer {
+  position: absolute;
+  top: 116px; /* 16px (logo top) + 50px (logo height) + 50px (gap) = 116px */
+  left: 0;
+  width: 100%;
+  height: 50px; /* Match dashboardIconContainer height */
+  display: flex;
+  align-items: center;
+  padding-left: 20px; /* Match icon position from left edge in closed menu */
+  gap: 0;
+}
+
+.walletsItemContainer {
+  position: absolute;
+  top: 182px; /* 116px (dashboard) + 50px (icon height) + 16px (gap) */
+  left: 0;
+  width: 100%;
+  height: 50px; /* Match iconContainer height */
+  display: flex;
+  align-items: center;
+  padding-left: 20px; /* Match icon position from left edge in closed menu */
+  gap: 0;
+}
+
+.searchHistoryItemContainer {
+  position: absolute;
+  top: 222px; /* Match apiKeyIconContainer position (169px wallet + 53px gap) */
+  left: 0;
+  width: 100%;
+  height: 50px; /* Match iconContainer height */
+  display: flex;
+  align-items: center;
+  padding-left: 20px; /* Match icon position from left edge in closed menu */
+  gap: 0;
+}
+
+.apiKeysItemContainer {
+  position: absolute;
+  top: 248px; /* 182px (wallets) + 50px (icon height) + 16px (gap) */
+  left: 0;
+  width: 100%;
+  height: 50px; /* Match iconContainer height */
+  display: flex;
+  align-items: center;
+  padding-left: 20px; /* Match icon position from left edge in closed menu */
+  gap: 0;
+}
+
+.menuItemIconContainer {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.menuItemIcon {
+  object-fit: contain;
+}
+
+.menuItemText {
+  color: var(--textGrey);
+  font-size: 14px;
+  margin-left: 0;
+  padding-left: 0;
+}
+
+.menuBarIconContainer {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.menuBarIcon {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
+
+.dashboardIconContainer {
+  position: absolute;
+  top: 116px; /* Match dashboardItemContainer top position in menuBarOpen */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0;
+}
+
+.dashboardIcon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.searchOptionsContainer {
+  position: absolute;
+  top: 182px; /* 116px (dashboard) + 50px (icon height) + 16px (gap) */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px; /* 16px spacing between icons */
+}
+
+.iconContainer {
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.searchOptionsContainer .iconContainer {
+  position: relative;
+}
+
+.searchHistoryIconContainer {
+  position: absolute;
+  top: 222px; /* Match searchHistoryItemContainer top position in menuBarOpen */
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0;
+}
+
+.apiKeyIconContainer {
+  position: absolute;
+  top: 248px; /* 182px (wallets) + 50px (icon height) + 16px (gap) */
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0;
+}
+
+.menuBarCommon {
+  color: var(--textWhite);
+  background-color: var(--grey);
+}
+
+/* Ensure main content doesn't overlap with the fixed menu bar */
+main.menu-closed {
+  margin-left: 90px; /* Match menuBarClosedContainer width */
+}
+
+main.menu-open {
+  margin-left: 240px; /* Match menuBarOpenContainer width */
+}
