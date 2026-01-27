@@ -82,7 +82,7 @@ const Login = () => {
                 textAlign: 'center',
               }}
             >
-              Sign in to access your compliance dashboard.
+              Sign in to access your compliance ASHBOARDS.
             </p>
           </div>
           <form onSubmit={handleSubmit}>
