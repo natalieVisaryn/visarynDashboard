@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { checkAuth } from "../utils/auth";
+import React from "react";
 import { useMenuBar } from "./menuBar/useMenuBar";
+import { useUser } from "../context/userContext";
 import MenuBarOpen from "./menuBar/menuBarOpen";
 import MenuBarClosed from "./menuBar/menuBarClosed";
 
@@ -11,31 +10,14 @@ interface PageLayoutProps {
 
 export default function PageLayout({ children }: PageLayoutProps) {
   const { isMenuOpen, setIsMenuOpen } = useMenuBar();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const navigate = useNavigate();
+  const { isLoading } = useUser();
 
-  useEffect(() => {
-    const verifyAuth = async () => {
-      const authenticated = await checkAuth();
-      setIsAuthenticated(authenticated);
-      if (!authenticated) {
-        navigate("/login");
-      }
-    };
-
-    verifyAuth();
-  }, [navigate]);
-
-  if (isAuthenticated === null) {
+  if (isLoading) {
     return (
       <div style={{ color: "white", textAlign: "center", padding: "2rem" }}>
         Loading...
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return null;
   }
 
   return (

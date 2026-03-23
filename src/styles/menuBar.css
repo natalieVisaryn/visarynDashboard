@@ -72,15 +72,27 @@
   gap: 0;
 }
 
-.apiKeysItemContainer {
+.blacklistItemContainer {
   position: absolute;
   top: 248px; /* 182px (wallets) + 50px (icon height) + 16px (gap) */
   left: 0;
   width: 100%;
-  height: 50px; /* Match iconContainer height */
+  height: 50px;
   display: flex;
   align-items: center;
-  padding-left: 20px; /* Match icon position from left edge in closed menu */
+  padding-left: 20px;
+  gap: 0;
+}
+
+.apiKeysItemContainer {
+  position: absolute;
+  top: 314px; /* 248px (blacklist) + 50px (icon height) + 16px (gap) */
+  left: 0;
+  width: 100%;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  padding-left: 20px;
   gap: 0;
 }
 
@@ -173,12 +185,60 @@
   padding: 0;
 }
 
-.apiKeyIconContainer {
+.blacklistIconContainer {
   position: absolute;
   top: 248px; /* 182px (wallets) + 50px (icon height) + 16px (gap) */
   left: 50%;
   transform: translateX(-50%);
   padding: 0;
+}
+
+.apiKeyIconContainer {
+  position: absolute;
+  top: 314px; /* 248px (blacklist) + 50px (icon height) + 16px (gap) */
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0;
+}
+
+/* Admin menu — open sidebar */
+.adminMenuOpenContainer {
+  position: absolute;
+  top: 116px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.adminMenuItemOpen {
+  width: 100%;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  padding-left: 20px;
+  gap: 0;
+}
+
+/* Admin menu — closed sidebar */
+.adminMenuClosedContainer {
+  position: absolute;
+  top: 116px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.adminMenuItemClosed {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .menuBarCommon {

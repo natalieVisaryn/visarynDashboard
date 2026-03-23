@@ -1,33 +1,24 @@
-import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { checkAuth } from '../utils/auth';
+import { useUser } from '../context/userContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requiredRole?: "ADMIN" | "USER";
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
+  const { user, isLoading } = useUser();
 
-  useEffect(() => {
-    const verifyAuth = async () => {
-      // Check authentication via API (this will include cookies automatically)
-      // hasCookie() now uses checkAuth() internally, so we can just use checkAuth()
-      const authenticated = await checkAuth();
-      setIsAuthenticated(authenticated);
-    };
-
-    verifyAuth();
-  }, []);
-
-  // Show nothing while checking authentication
-  if (isAuthenticated === null) {
-    return null; // Or you could return a loading spinner
+  if (isLoading) {
+    return null;
   }
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated) {
+  if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (requiredRole && user.accountType !== requiredRole) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

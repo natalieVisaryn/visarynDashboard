@@ -1,5 +1,5 @@
 // API base URL - set via VITE_API_BASE_URL in .env file for production
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 export interface LoginCredentials {
     email: string;
@@ -24,7 +24,7 @@ export const login = async (credentials: LoginCredentials): Promise<void> => {
 
 export const checkAuth = async (): Promise<boolean> => {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/whoami`, {
+        const response = await fetch(`${API_BASE_URL}/backend/whoami`, {
             method: 'GET',
             credentials: 'include',
         });
