@@ -1,5 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { useMenuBar } from "./menuBar/useMenuBar";
+import { API_BASE_URL } from "../utils/auth";
+
+interface WalletScore {
+  walletAddress: string;
+  riskScore: number;
+  recommendedAction: string;
+  checkedAt: string;
+}
+
+interface TableRow {
+  walletAddress: string;
+  blockchain: "ETH" | "BTC";
+  riskScore: number;
+  recommendedAction: string;
+  timestamp: string;
+}
+
+function detectBlockchain(address: string): "ETH" | "BTC" {
+  return address.startsWith("0x") ? "ETH" : "BTC";
+}
 
 export default function WalletSearchResultTable() {
   const { isMenuOpen } = useMenuBar();
@@ -8,92 +28,10 @@ export default function WalletSearchResultTable() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [showCopyNotification, setShowCopyNotification] = useState(false);
-  const fakeTableData = [
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "ETH",
-      riskScore: 8,
-      recommendedAction: "Escalate",
-      timestamp: "2021-01-01 12:00:00",
-    },
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "BTC",
-      riskScore: 1,
-      recommendedAction: "Allow",
-      timestamp: "2021-01-01 12:00:00",
-    },
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "ETH",
-      riskScore: 5,
-      recommendedAction: "Review",
-      timestamp: "2021-01-01 12:00:00",
-    },
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "ETH",
-      riskScore: 8,
-      recommendedAction: "Escalate",
-      timestamp: "2021-01-01 12:00:00",
-    },
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "BTC",
-      riskScore: 1,
-      recommendedAction: "Allow",
-      timestamp: "2021-01-01 12:00:00",
-    },
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "ETH",
-      riskScore: 5,
-      recommendedAction: "Review",
-      timestamp: "2021-01-01 12:00:00",
-    },
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "ETH",
-      riskScore: 8,
-      recommendedAction: "Escalate",
-      timestamp: "2021-01-01 12:00:00",
-    },
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "BTC",
-      riskScore: 1,
-      recommendedAction: "Allow",
-      timestamp: "2021-01-01 12:00:00",
-    },
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "ETH",
-      riskScore: 5,
-      recommendedAction: "Review",
-      timestamp: "2021-01-01 12:00:00",
-    },
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "ETH",
-      riskScore: 8,
-      recommendedAction: "Escalate",
-      timestamp: "2021-01-01 12:00:00",
-    },
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "BTC",
-      riskScore: 1,
-      recommendedAction: "Allow",
-      timestamp: "2021-01-01 12:00:00",
-    },
-    {
-      walletAddress: "0x1234567890123456789012345678901234567890",
-      blockchain: "ETH",
-      riskScore: 5,
-      recommendedAction: "Review",
-      timestamp: "2021-01-01 12:00:00",
-    },
-  ];
+  const [tableData, setTableData] = useState<TableRow[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(false);
 
   const riskScoreMap = [
     {
@@ -117,12 +55,37 @@ export default function WalletSearchResultTable() {
     return score.toString();
   };
 
-  const totalItems = fakeTableData.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const displayedData = fakeTableData.slice(startIndex, endIndex);
-  const displayedCount = displayedData.length;
+  useEffect(() => {
+    const fetchWalletScores = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/backend/getAllWalletScores?page=${currentPage - 1}&pageSize=${itemsPerPage}`,
+          { credentials: "include" },
+        );
+        if (!res.ok) throw new Error("Failed to fetch wallet scores");
+        const json = await res.json();
+        const rows: TableRow[] = json.data.map((score: WalletScore) => ({
+          walletAddress: score.walletAddress,
+          blockchain: detectBlockchain(score.walletAddress),
+          riskScore: score.riskScore,
+          recommendedAction: score.recommendedAction,
+          timestamp: score.checkedAt,
+        }));
+        setTableData(rows);
+        setTotalItems(json.totalEntries);
+        setTotalPages(json.totalPages);
+      } catch (err) {
+        console.error("Error fetching wallet scores:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWalletScores();
+  }, [currentPage, itemsPerPage]);
+
+  const displayedData = tableData;
+  const displayedCount = tableData.length;
 
   // Auto-dismiss copy notification after 3 seconds
   useEffect(() => {
@@ -350,6 +313,37 @@ export default function WalletSearchResultTable() {
             </tr>
           </thead>
           <tbody>
+            {loading ? (
+              <tr>
+                <td
+                  colSpan={5}
+                  style={{
+                    padding: "3rem 1rem",
+                    textAlign: "center",
+                    fontFamily: '"Hero New", sans-serif',
+                    fontSize: "14px",
+                    color: "var(--text-grey-white)",
+                  }}
+                >
+                  Loading...
+                </td>
+              </tr>
+            ) : displayedData.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={5}
+                  style={{
+                    padding: "3rem 1rem",
+                    textAlign: "center",
+                    fontFamily: '"Hero New", sans-serif',
+                    fontSize: "14px",
+                    color: "var(--text-grey-white)",
+                  }}
+                >
+                  No results found
+                </td>
+              </tr>
+            ) : null}
             {displayedData.map((row, index) => {
               const isLastRow = index === displayedData.length - 1;
               return (
@@ -460,7 +454,7 @@ export default function WalletSearchResultTable() {
                           />
                         ) : null;
                       })()}
-                      <span>{getRiskScoreLabel(row.riskScore)}</span>
+                      <span>{row.riskScore}</span>
                     </div>
                   </td>
                   <td

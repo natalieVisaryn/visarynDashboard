@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+
 interface BarChartData {
   key: string;
   value: number;
@@ -8,12 +10,37 @@ interface BarChartProps {
   title: string;
 }
 
+const MONTH_ABBRS = [
+  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+];
+
+function formatDateLabel(dateStr: string): string {
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  return `${MONTH_ABBRS[date.getMonth()]} ${date.getDate()}`;
+}
+
 export default function BarChart({ data, title }: BarChartProps) {
-  const width = 1072;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(1072);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const height = 405;
   const titleHeight = 30;
-  const titleBottomPadding = 50;
-  const padding = { top: 20, right: 20, bottom: 20, left: 40 };
+  const titleBottomPadding = 40;
+  const padding = { top: 20, right: 26, bottom: 20, left: 26 };
   const chartWidth = width - padding.left - padding.right;
   const xAxisLabelHeight = 20;
   // Available height = total height - top padding - bottom padding
@@ -46,10 +73,12 @@ export default function BarChart({ data, title }: BarChartProps) {
 
   return (
     <div
+      ref={containerRef}
       style={{
-        width: `${width}px`,
+        width: "100%",
         height: `${height}px`,
         backgroundColor: "var(--dark-blue)",
+        borderRadius: "4px",
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
@@ -138,13 +167,14 @@ export default function BarChart({ data, title }: BarChartProps) {
               {/* X-axis label */}
               <text
                 x={x + barWidth / 2}
-                y={chartHeight + 15}
+                y={chartHeight + 12}
                 fill="var(--textWhite)"
                 fontSize="12px"
                 textAnchor="middle"
+                dominantBaseline="hanging"
                 fontFamily='"Hero New", sans-serif'
               >
-                {item.key}
+                {formatDateLabel(item.key)}
               </text>
             </g>
           );

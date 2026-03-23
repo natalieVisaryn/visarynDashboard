@@ -1,27 +1,28 @@
-import React from "react";
+import type { ReactNode } from "react";
 
 interface StatisticProps {
   icon: string;
   title: string;
-  value: string;
-  subtext: React.ReactNode;
+  value: ReactNode;
+  iconWidth?: string;
+  iconHeight?: string;
 }
 
 export default function Statistic({
   icon,
   title,
   value,
-  subtext,
+  iconWidth = "24px",
+  iconHeight = "37px",
 }: StatisticProps) {
   return (
     <div
       style={{
         width: "250px",
-        height: "87px",
         backgroundColor: "transparent",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "space-between",
+        gap: "8px",
       }}
     >
       {/* Row 1: Icon and Title */}
@@ -29,10 +30,12 @@ export default function Statistic({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
+          gap: "12px",
+          paddingBottom: "5px",
+          minHeight: "37px",
         }}
       >
-        <img src={icon} alt={title} style={{ width: "24px", height: "28px" }} />
+        <img src={icon} alt={title} style={{ width: iconWidth, height: iconHeight }} />
         <span
           style={{
             color: "var(--textWhite)",
@@ -50,7 +53,7 @@ export default function Statistic({
       {/* Row 2: Value */}
       <div
         style={{
-          width: "76px",
+          width: "100%",
           height: "24px",
           opacity: 1,
           gap: "6px",
@@ -61,25 +64,13 @@ export default function Statistic({
           style={{
             color: "var(--textWhite)",
             fontSize: "24px",
-            fontWeight: 700,
+            fontWeight: 500,
           }}
         >
           {value}
         </span>
       </div>
 
-      {/* Row 3: Subtext */}
-      <div
-        style={{
-          color: "var(--textGrey)",
-          fontSize: "13px",
-          fontWeight: 400,
-          lineHeight: "120%",
-          letterSpacing: "0px",
-        }}
-      >
-        {subtext}
-      </div>
     </div>
   );
 }

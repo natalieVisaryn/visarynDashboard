@@ -2,6 +2,7 @@
   --black: #191b1f;
   --grey: #30343b;
   --orange: #ff663b;
+  --light-blue: #ABDEED;
   --blue: #85cfe5;
   --dark-blue: #25282f;
   --very-dark-blue: #1b1e23;
@@ -11,6 +12,7 @@
   --text-grey-white: #e3e5ea;
   --textGrey: #a9b1c0;
   --text-dark-blue: #09222a;
+  --brown:#391D05
 }
 
 html,
@@ -68,4 +70,55 @@ a {
 .page-number-input {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+.reason-textarea::-webkit-scrollbar {
+  width: 8px;
+}
+
+.reason-textarea::-webkit-scrollbar-track {
+  background: var(--input-field-blue);
+  border-radius: 0 6px 6px 0;
+}
+
+.reason-textarea::-webkit-scrollbar-thumb {
+  background: var(--input-field-border);
+  border-radius: 4px;
+}
+
+.reason-textarea {
+  scrollbar-color: var(--input-field-border) var(--input-field-blue);
+}
+
+.blacklist-table-scroll {
+  overflow: auto !important;
+  scrollbar-color: var(--dark-blue) var(--very-dark-blue);
+  scrollbar-width: thin;
+}
+
+.blacklist-table-scroll::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+}
+
+.blacklist-table-scroll::-webkit-scrollbar-track {
+  background: var(--very-dark-blue);
+  border-radius: 4px;
+}
+
+.blacklist-table-scroll::-webkit-scrollbar-thumb {
+  background: var(--dark-blue);
+  border-radius: 4px;
+  border: 2px solid var(--very-dark-blue);
+  min-height: 40px;
+  min-width: 40px;
+}
+
+.blacklist-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--input-field-blue);
+}
+
+.blacklist-table-scroll::-webkit-scrollbar-corner {
+  background: var(--very-dark-blue);
 }

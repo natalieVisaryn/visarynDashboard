@@ -1,6 +1,7 @@
 import { useState, type FormEvent, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login,  hasCookie } from '../utils/auth';
+import { login, hasCookie } from '../utils/auth';
+import { useUser } from '../context/userContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -9,6 +10,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { refreshUser } = useUser();
 
   useEffect(() => {
     const verifyAuth = async () => {
@@ -28,6 +30,7 @@ const Login = () => {
 
     try {
       await login({ email, password });
+      await refreshUser();
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
@@ -54,7 +57,7 @@ const Login = () => {
             borderRadius: '16px',
             width: '528px',
             height: '636px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+            boxShadow: 'none',
           }}
         >
           <div
