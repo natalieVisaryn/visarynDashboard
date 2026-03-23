@@ -48,13 +48,6 @@ export default function WalletSearchResultTable() {
     },
   ];
 
-  const getRiskScoreLabel = (score: number): string => {
-    if (score >= 1 && score <= 4) return "Low";
-    if (score >= 5 && score <= 7) return "Medium";
-    if (score >= 8 && score <= 10) return "High";
-    return score.toString();
-  };
-
   useEffect(() => {
     const fetchWalletScores = async () => {
       setLoading(true);
