@@ -3,6 +3,7 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import AdminDashboard from './components/AdminDashboard';
 import Wallets from './components/Wallets';
+import ScreeningDetail from './components/ScreeningDetail';
 import ApiKeys from './components/ApiKeys';
 import OrgBlacklist from './components/OrgBlacklist';
 import BlacklistDetail from './components/BlacklistDetail';
@@ -47,6 +48,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Wallets />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/screenings/:screeningId"
+            element={
+              <ProtectedRoute requiredRole="USER">
+                <ScreeningDetail />
               </ProtectedRoute>
             }
           />

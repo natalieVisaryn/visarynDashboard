@@ -19,6 +19,7 @@ type BlacklistEntry = {
   addedBy: { name: string };
   orgId: string | null;
   isAdminListed: boolean;
+  mostRecentWalletScore?: string;
 };
 
 function formatEnum(val: string | null | undefined): string {
@@ -211,8 +212,8 @@ export default function BlacklistDetail() {
                 boxShadow: "none",
               }}
             >
-              <img src="/backArrowBlue.svg" alt="" style={{ width: "16px", height: "16px" }} /> Back to
-               Blacklist
+              <img src="/backArrowBlue.svg" alt="" style={{ width: "16px", height: "16px" }} />{" "}
+              {entry && !entry.isAdminListed ? "Back to Organization Blacklist" : "Back to Blacklist"}
             </button>
 
             {loading ? (
@@ -375,6 +376,77 @@ export default function BlacklistDetail() {
                   </div>
                   )}
                 </div>
+
+                {/* Screening banner */}
+                {entry.mostRecentWalletScore && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      backgroundColor: "var(--teal)",
+                      borderRadius: "4px",
+                      padding: "16px 24px",
+                      marginBottom: "28px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                      <img
+                        src="/infoIconBlueFilled.svg"
+                        alt=""
+                        style={{ width: "32px", height: "28px", flexShrink: 0 }}
+                      />
+                      <div>
+                        <div
+                          style={{
+                            fontFamily: '"Hero New", sans-serif',
+                            fontWeight: 700,
+                            fontSize: "14px",
+                            color: "var(--text-grey-white)",
+                            marginBottom: "10px",
+                          }}
+                        >
+                          This wallet has been screened
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: '"Hero New", sans-serif',
+                            fontWeight: 400,
+                            fontSize: "13px",
+                            color: "var(--text-grey-white)",
+                          }}
+                        >
+                          Click Go to Wallet to see this wallet's risk score and decision rationale.
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/screenings/${entry.mostRecentWalletScore}`)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        backgroundColor: "var(--very-dark-blue)",
+                        border: "1px solid var(--blue)",
+                        borderRadius: "4px",
+                        padding: "10px 18px",
+                        color: "var(--blue)",
+                        fontFamily: '"Hero New", sans-serif',
+                        fontSize: "14px",
+                        fontWeight: 500,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Go to Wallet
+                      <img
+                        src="/forwardArrowBlue.svg"
+                        alt=""
+                        style={{ width: "24px", height: "16px" }}
+                      />
+                    </button>
+                  </div>
+                )}
 
                 {/* Risk Classification */}
                 <div style={sectionTitle}>Risk Classification</div>

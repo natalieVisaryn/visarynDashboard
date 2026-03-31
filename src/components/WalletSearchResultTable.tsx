@@ -1,52 +1,117 @@
 import React, { useState, useEffect } from "react";
-import { useMenuBar } from "./menuBar/useMenuBar";
+import { useNavigate } from "react-router-dom";
 import { API_BASE_URL } from "../utils/auth";
 
 interface WalletScore {
+  id: string;
   walletAddress: string;
   riskScore: number;
+  riskLevel: string;
   recommendedAction: string;
   checkedAt: string;
+  decisionConfidence: string;
+  rulesetVersion: string;
 }
 
 interface TableRow {
+  id: string;
   walletAddress: string;
   blockchain: "ETH" | "BTC";
   riskScore: number;
+  riskLevel: string;
   recommendedAction: string;
   timestamp: string;
+  confidence: string;
+  ruleset: string;
 }
 
 function detectBlockchain(address: string): "ETH" | "BTC" {
   return address.startsWith("0x") ? "ETH" : "BTC";
 }
 
+function formatScreenedAt(timestamp: string): string {
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) return timestamp;
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getFullYear();
+  let hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12 || 12;
+  return `${month}/${day}/${year} at ${hours}:${minutes} ${ampm}`;
+}
+
+type SortColumn = "screenedAt" | "walletAddress" | "blockchain" | "riskScore" | "recommendedAction" | "confidence" | "ruleset";
+type SortCycle = 1 | 2 | 3;
+
+const ACTION_ORDER: Record<string, number> = { Allow: 1, Review: 2, Escalate: 3 };
+
+function sortRows(rows: TableRow[], column: SortColumn | null, cycle: SortCycle): TableRow[] {
+  if (!column || cycle === 3) return rows;
+  const direction = cycle === 1 ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    let cmp = 0;
+    switch (column) {
+      case "screenedAt":
+        cmp = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+        break;
+      case "walletAddress":
+        cmp = a.walletAddress.localeCompare(b.walletAddress);
+        break;
+      case "blockchain":
+        cmp = a.blockchain.localeCompare(b.blockchain);
+        break;
+      case "riskScore":
+        cmp = a.riskScore - b.riskScore;
+        break;
+      case "recommendedAction":
+        cmp = (ACTION_ORDER[a.recommendedAction] ?? 0) - (ACTION_ORDER[b.recommendedAction] ?? 0);
+        break;
+      case "confidence":
+        cmp = a.confidence.localeCompare(b.confidence);
+        break;
+      case "ruleset":
+        cmp = a.ruleset.localeCompare(b.ruleset);
+        break;
+    }
+    return cmp * direction;
+  });
+}
+
 export default function WalletSearchResultTable() {
-  const { isMenuOpen } = useMenuBar();
-  const menuBarWidth = isMenuOpen ? 240 : 90;
-  const width = `calc(90vw - ${menuBarWidth}px)`;
+  const navigate = useNavigate();
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [showCopyNotification, setShowCopyNotification] = useState(false);
   const [tableData, setTableData] = useState<TableRow[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
+  const [sortCycle, setSortCycle] = useState<SortCycle>(1);
+  const [filterText, setFilterText] = useState("");
 
-  const riskScoreMap = [
-    {
-      riskScore: 8,
-      icon: "/8score.svg",
-    },
-    {
-      riskScore: 1,
-      icon: "/1score.svg",
-    },
-    {
-      riskScore: 5,
-      icon: "/5score.svg",
-    },
-  ];
+  const handleSortClick = (column: SortColumn) => {
+    if (column !== sortColumn) {
+      setSortColumn(column);
+      setSortCycle(1);
+    } else {
+      setSortCycle(((sortCycle % 3) + 1) as SortCycle);
+    }
+  };
+
+  const renderSortArrow = (column: SortColumn) => {
+    if (sortColumn !== column || sortCycle === 3) return null;
+    return (
+      <img
+        src={sortCycle === 1 ? "/upArrowBlue.svg" : "/downArrowBlue.svg"}
+        alt={sortCycle === 1 ? "Ascending" : "Descending"}
+        style={{ width: "11px", height: "15px" }}
+      />
+    );
+  };
 
   useEffect(() => {
     const fetchWalletScores = async () => {
@@ -59,11 +124,17 @@ export default function WalletSearchResultTable() {
         if (!res.ok) throw new Error("Failed to fetch wallet scores");
         const json = await res.json();
         const rows: TableRow[] = json.data.map((score: WalletScore) => ({
+          id: score.id,
           walletAddress: score.walletAddress,
           blockchain: detectBlockchain(score.walletAddress),
           riskScore: score.riskScore,
+          riskLevel: score.riskLevel ?? "",
           recommendedAction: score.recommendedAction,
           timestamp: score.checkedAt,
+          confidence: score.decisionConfidence
+            ? score.decisionConfidence.charAt(0).toUpperCase() + score.decisionConfidence.slice(1)
+            : "",
+          ruleset: score.rulesetVersion ?? "",
         }));
         setTableData(rows);
         setTotalItems(json.totalEntries);
@@ -77,8 +148,40 @@ export default function WalletSearchResultTable() {
     fetchWalletScores();
   }, [currentPage, itemsPerPage]);
 
-  const displayedData = tableData;
-  const displayedCount = tableData.length;
+  const filteredData = React.useMemo(() => {
+    const query = filterText.trim().toLowerCase();
+    if (!query) return tableData;
+
+    const columnAccessors: ((row: TableRow) => string)[] = [
+      (r) => formatScreenedAt(r.timestamp),
+      (r) => r.walletAddress,
+      (r) => r.blockchain,
+      (r) => `${r.riskScore} ${r.riskLevel}`,
+      (r) => r.recommendedAction,
+      (r) => r.confidence,
+      (r) => r.ruleset,
+    ];
+
+    const matchedRows: { row: TableRow; firstMatchCol: number }[] = [];
+    for (const row of tableData) {
+      let firstMatchCol = -1;
+      for (let i = 0; i < columnAccessors.length; i++) {
+        if (columnAccessors[i](row).toLowerCase().includes(query)) {
+          firstMatchCol = i;
+          break;
+        }
+      }
+      if (firstMatchCol !== -1) {
+        matchedRows.push({ row, firstMatchCol });
+      }
+    }
+
+    matchedRows.sort((a, b) => a.firstMatchCol - b.firstMatchCol);
+    return matchedRows.map((m) => m.row);
+  }, [tableData, filterText]);
+
+  const displayedData = sortRows(filteredData, sortColumn, sortCycle);
+  const displayedCount = filteredData.length;
 
   // Auto-dismiss copy notification after 3 seconds
   useEffect(() => {
@@ -115,201 +218,181 @@ export default function WalletSearchResultTable() {
   return (
     <div
       style={{
-        width: width,
+        width: "100%",
+        maxHeight: "100vh",
         backgroundColor: "transparent",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
         paddingTop: "2rem",
         paddingBottom: "2rem",
+        overflowY: "auto",
       }}
     >
-      {/* Header Section */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-        }}
-      >
-        {/* Title - Left Justified */}
-        <div
-          style={{
-            fontFamily: '"Hero New", sans-serif',
-            fontWeight: 700,
-            fontSize: "18px",
-            lineHeight: "100%",
-            color: "var(--textWhite)",
-          }}
-        >
-          Recent Screenings
-        </div>
-
-        {/* Filter and Export - Right Justified */}
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            alignItems: "center",
-          }}
-        >
-          <div
-            style={{
-              position: "relative",
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <img
-              src="/GreyMagnifyingGlass.svg"
-              alt="Search"
-              style={{
-                position: "absolute",
-                left: "1rem",
-                width: "18px",
-                height: "18px",
-                pointerEvents: "none",
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Filter Wallets"
-              style={{
-                height: "54px",
-                padding: "1rem 1rem 1rem 2.75rem",
-                borderRadius: "4px",
-                border: "1px solid var(--input-field-border)",
-                backgroundColor: "var(--input-field-blue)",
-                color: "var(--textWhite)",
-                boxSizing: "border-box",
-                fontFamily: '"Hero New", sans-serif',
-                fontSize: "14px",
-                minWidth: "200px",
-              }}
-            />
-          </div>
-          <button
-            type="button"
-            style={{
-              height: "54px",
-              padding: "0 1.5rem",
-              borderRadius: "4px",
-              border: "1px solid var(--blue)",
-              backgroundColor: "var(--very-dark-blue)",
-              color: "var(--blue)",
-              cursor: "pointer",
-              fontWeight: 500,
-              fontFamily: '"Hero New", sans-serif',
-              fontSize: "16px",
-              whiteSpace: "nowrap",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-            }}
-          >
-            <img
-              src="/blueExport.svg"
-              alt="Export"
-              style={{ width: "12px", height: "17px" }}
-            />
-            Export
-          </button>
-        </div>
-      </div>
-
       {/* Table */}
       <div
         style={{
           backgroundColor: "var(--dark-blue)",
           borderRadius: "4px",
-          overflow: "hidden",
+          overflowX: "auto",
           paddingLeft: "20px",
           paddingRight: "20px",
         }}
       >
+        {/* Header Section */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingTop: "20px",
+            paddingBottom: "20px",
+          }}
+        >
+          {/* Title - Left Justified */}
+          <div
+            style={{
+              fontFamily: '"Hero New", sans-serif',
+              fontWeight: 700,
+              fontSize: "18px",
+              lineHeight: "100%",
+              color: "var(--textWhite)",
+            }}
+          >
+            Recent Screenings
+          </div>
+
+          {/* Filter and Export - Right Justified */}
+          <div
+            style={{
+              display: "flex",
+              gap: "12px",
+              alignItems: "center",
+            }}
+          >
+            <div
+              style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              <img
+                src="/GreyMagnifyingGlass.svg"
+                alt="Search"
+                style={{
+                  position: "absolute",
+                  left: "1rem",
+                  width: "18px",
+                  height: "18px",
+                  pointerEvents: "none",
+                }}
+              />
+              <input
+                type="text"
+                placeholder="Filter Screenings"
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                style={{
+                  height: "48px",
+                  padding: "1rem 2.75rem 1rem 2.75rem",
+                  borderRadius: "4px",
+                  border: "1px solid var(--input-field-border)",
+                  backgroundColor: "var(--input-field-blue)",
+                  color: "var(--textWhite)",
+                  boxSizing: "border-box",
+                  fontFamily: '"Hero New", sans-serif',
+                  fontSize: "14px",
+                  minWidth: "320px",
+                }}
+              />
+              {filterText && (
+                <img
+                  src="/xGrey.svg"
+                  alt="Clear"
+                  onClick={() => setFilterText("")}
+                  style={{ position: "absolute", right: 16, top: 12, width: 16, height: 24, cursor: "pointer" }}
+                />
+              )}
+            </div>
+            <button
+              type="button"
+              style={{
+                height: "48px",
+                padding: "0px 20px",
+                borderRadius: "4px",
+                border: "1px solid var(--blue)",
+                backgroundColor: "var(--very-dark-blue)",
+                color: "var(--blue)",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontFamily: '"Hero New", sans-serif',
+                fontSize: "15px",
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <img
+                src="/exportBlue.svg"
+                alt="Export"
+                style={{ width: "24px", height: "16px" }}
+              />
+              Export
+            </button>
+          </div>
+        </div>
         <table
           style={{
             width: "100%",
+            minWidth: "800px",
             borderCollapse: "collapse",
           }}
         >
           <thead>
             <tr
               style={{
-                borderBottom: "1px solid var(--input-field-border)",
+                borderBottom: "1px solid var(--input-field-blue)",
               }}
             >
-              <th
-                style={{
-                  padding: "calc(1rem + 20px) 1rem 1rem 1rem",
-                  textAlign: "left",
-                  fontFamily: '"Hero New", sans-serif',
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "var(--textWhite)",
-                  borderTopLeftRadius: "4px",
-                }}
-              >
-                Wallet Address
-              </th>
-              <th
-                style={{
-                  padding: "calc(1rem + 20px) 1rem 1rem 1rem",
-                  textAlign: "left",
-                  fontFamily: '"Hero New", sans-serif',
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "var(--textWhite)",
-                }}
-              >
-                Block Chain
-              </th>
-              <th
-                style={{
-                  padding: "calc(1rem + 20px) 1rem 1rem 1rem",
-                  textAlign: "left",
-                  fontFamily: '"Hero New", sans-serif',
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "var(--textWhite)",
-                }}
-              >
-                Risk Score
-              </th>
-              <th
-                style={{
-                  padding: "calc(1rem + 20px) 1rem 1rem 1rem",
-                  textAlign: "left",
-                  fontFamily: '"Hero New", sans-serif',
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "var(--textWhite)",
-                }}
-              >
-                Recommended Action
-              </th>
-              <th
-                style={{
-                  padding: "calc(1rem + 20px) 1rem 1rem 1rem",
-                  textAlign: "left",
-                  fontFamily: '"Hero New", sans-serif',
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "var(--textWhite)",
-                  borderTopRightRadius: "4px",
-                }}
-              >
-                Timestamp
-              </th>
+              {([
+                ["Screened At", "screenedAt"],
+                ["Wallet Address", "walletAddress"],
+                ["Block Chain", "blockchain"],
+                ["Risk Score", "riskScore"],
+                ["Recommended Action", "recommendedAction"],
+                ["Confidence", "confidence"],
+                ["Ruleset", "ruleset"],
+              ] as [string, SortColumn][]).map(([label, col]) => (
+                <th
+                  key={col}
+                  style={{
+                    padding: "1rem",
+                    textAlign: "left",
+                    fontFamily: '"Hero New", sans-serif',
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    color: "var(--text-grey-white)",
+                    whiteSpace: "nowrap",
+                    cursor: "pointer",
+                    userSelect: "none",
+                  }}
+                  onClick={() => handleSortClick(col)}
+                >
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                    {label}
+                    {renderSortArrow(col)}
+                  </span>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={7}
                   style={{
                     padding: "3rem 1rem",
                     textAlign: "center",
@@ -324,16 +407,20 @@ export default function WalletSearchResultTable() {
             ) : displayedData.length === 0 ? (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={7}
                   style={{
                     padding: "3rem 1rem",
                     textAlign: "center",
                     fontFamily: '"Hero New", sans-serif',
-                    fontSize: "14px",
+                    fontSize: "24px",
+                    fontWeight: 700,
                     color: "var(--text-grey-white)",
                   }}
                 >
-                  No results found
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px", padding: "10px 0px" }}>
+                    <img src="/blueMagnifyingGlass.svg" alt="" width={40} height={40} />
+                 <div style={{paddingTop: "20px"}}>No results found</div>   
+                  </div>
                 </td>
               </tr>
             ) : null}
@@ -341,11 +428,20 @@ export default function WalletSearchResultTable() {
               const isLastRow = index === displayedData.length - 1;
               return (
                 <tr
-                  key={index}
+                  key={row.id}
+                  onClick={() => navigate(`/screenings/${row.id}`)}
+                  onMouseEnter={() => setHoveredRow(index)}
+                  onMouseLeave={() => setHoveredRow(null)}
                   style={{
                     borderBottom: isLastRow
                       ? "none"
-                      : "1px solid var(--input-field-border)",
+                      : "1px solid var(--input-field-blue)",
+                    cursor: "pointer",
+                    backgroundColor:
+                      hoveredRow === index
+                        ? "var(--input-field-blue)"
+                        : "transparent",
+                    transition: "background-color 0.15s ease",
                   }}
                 >
                   <td
@@ -353,8 +449,20 @@ export default function WalletSearchResultTable() {
                       padding: "1rem",
                       fontFamily: '"Hero New", sans-serif',
                       fontSize: "13px",
-                      color: "var(--text-grey-white)",
+                      fontWeight: 400,
+                      color: "var(--textWhite)",
                       ...(isLastRow && { borderBottomLeftRadius: "4px" }),
+                    }}
+                  >
+                    {formatScreenedAt(row.timestamp)}
+                  </td>
+                  <td
+                    style={{
+                      padding: "1rem",
+                      fontFamily: '"Hero New", sans-serif',
+                      fontSize: "13px",
+                      fontWeight: 400,
+                      color: "var(--text-grey-white)",
                     }}
                   >
                     <div
@@ -368,7 +476,7 @@ export default function WalletSearchResultTable() {
                       <img
                         src="/copyBlye.svg"
                         alt="Copy"
-                        onClick={() => handleCopyAddress(row.walletAddress)}
+                        onClick={(e) => { e.stopPropagation(); handleCopyAddress(row.walletAddress); }}
                         style={{
                           width: "16px",
                           height: "16px",
@@ -382,7 +490,8 @@ export default function WalletSearchResultTable() {
                     style={{
                       padding: "1rem",
                       fontFamily: '"Hero New", sans-serif',
-                      fontSize: "14px",
+                      fontSize: "13px",
+                      fontWeight: 400,
                       color: "var(--textWhite)",
                     }}
                   >
@@ -424,7 +533,8 @@ export default function WalletSearchResultTable() {
                     style={{
                       padding: "1rem",
                       fontFamily: '"Hero New", sans-serif',
-                      fontSize: "14px",
+                      fontSize: "13px",
+                      fontWeight: 400,
                       color: "var(--textWhite)",
                     }}
                   >
@@ -435,26 +545,20 @@ export default function WalletSearchResultTable() {
                         gap: "8px",
                       }}
                     >
-                      {(() => {
-                        const matchedItem = riskScoreMap.find(
-                          (item) => item.riskScore === row.riskScore,
-                        );
-                        return matchedItem ? (
-                          <img
-                            src={matchedItem.icon}
-                            alt={`Risk Score ${row.riskScore}`}
-                            style={{ width: "40px", height: "40px" }}
-                          />
-                        ) : null;
-                      })()}
-                      <span>{row.riskScore}</span>
+                      <img
+                        src={`/${row.riskScore}score.svg`}
+                        alt={`Risk Score ${row.riskScore}`}
+                        style={{ width: "54px", height: "40px" }}
+                      />
+                      <span>{row.riskLevel.charAt(0).toUpperCase() + row.riskLevel.slice(1).toLowerCase()}</span>
                     </div>
                   </td>
                   <td
                     style={{
                       padding: "1rem",
                       fontFamily: '"Hero New", sans-serif',
-                      fontSize: "14px",
+                      fontSize: "13px",
+                      fontWeight: 400,
                       color: "var(--textWhite)",
                       display: "flex",
                     }}
@@ -485,12 +589,24 @@ export default function WalletSearchResultTable() {
                     style={{
                       padding: "1rem",
                       fontFamily: '"Hero New", sans-serif',
-                      fontSize: "14px",
+                      fontSize: "13px",
+                      fontWeight: 400,
+                      color: "var(--textWhite)",
+                    }}
+                  >
+                    {row.confidence}
+                  </td>
+                  <td
+                    style={{
+                      padding: "1rem",
+                      fontFamily: '"Hero New", sans-serif',
+                      fontSize: "13px",
+                      fontWeight: 400,
                       color: "var(--textWhite)",
                       ...(isLastRow && { borderBottomRightRadius: "4px" }),
                     }}
                   >
-                    {row.timestamp}
+                    {row.ruleset}
                   </td>
                 </tr>
               );
