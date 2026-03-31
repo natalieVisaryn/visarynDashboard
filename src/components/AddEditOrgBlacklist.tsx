@@ -6,6 +6,8 @@ type AddEditOrgBlacklistProps = {
   onClose: () => void;
   onSuccess: () => void;
   editEntryId?: string | null;
+  initialAddress?: string;
+  initialChain?: string;
 };
 
 const labelStyle: React.CSSProperties = {
@@ -47,9 +49,9 @@ const requiredDot: React.CSSProperties = {
   fontWeight: 700,
 };
 
-export default function AddEditOrgBlacklist({ isOpen, onClose, onSuccess, editEntryId }: AddEditOrgBlacklistProps) {
-  const [address, setAddress] = useState("");
-  const [chain, setChain] = useState("ETH");
+export default function AddEditOrgBlacklist({ isOpen, onClose, onSuccess, editEntryId, initialAddress = "", initialChain = "ETH" }: AddEditOrgBlacklistProps) {
+  const [address, setAddress] = useState(initialAddress);
+  const [chain, setChain] = useState(initialChain);
   const [confidence, setConfidence] = useState("");
 
   const chainOptions = ["ETH", "BTC"];
@@ -131,9 +133,16 @@ export default function AddEditOrgBlacklist({ isOpen, onClose, onSuccess, editEn
     fetchEntry();
   }, [isOpen, editEntryId]);
 
+  useEffect(() => {
+    if (isOpen && !editEntryId) {
+      setAddress(initialAddress);
+      setChain(initialChain);
+    }
+  }, [isOpen, editEntryId, initialAddress, initialChain]);
+
   const resetForm = () => {
-    setAddress("");
-    setChain("ETH");
+    setAddress(initialAddress);
+    setChain(initialChain);
     setConfidence("");
     setCategory("");
     setSource("");

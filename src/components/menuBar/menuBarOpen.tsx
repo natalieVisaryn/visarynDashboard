@@ -80,7 +80,7 @@ export default function MenuBarOpen({ onIconClick }: MenuBarOpenProps) {
               className="menuItemText"
               style={{ color: isWalletSearch ? "var(--blue)" : "var(--textGrey)" }}
             >
-              Wallets
+              Screening
             </span>
           </div>
           <div

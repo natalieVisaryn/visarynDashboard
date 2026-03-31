@@ -18,9 +18,11 @@ export default function Wallets() {
             paddingTop: "40px",
             display: "flex",
             flexDirection: "column",
-            alignItems: "center",
             width: "100%",
             gap: "20px",
+            paddingLeft: "55px",
+            paddingRight: "55px",
+            boxSizing: "border-box",
           }}
         >
           <WalletSearch />

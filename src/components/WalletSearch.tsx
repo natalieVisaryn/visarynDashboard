@@ -1,41 +1,68 @@
 import  { useState } from "react";
-import { useMenuBar } from "./menuBar/useMenuBar";
 
 export default function WalletScreenResultsTable() {
   const [walletAddress, setWalletAddress] = useState("");
-  const [blockchain, setBlockchain] = useState("ETH");
-  const { isMenuOpen } = useMenuBar();
-  const menuBarWidth = isMenuOpen ? 240 : 90;
-  const width = `calc(90vw - ${menuBarWidth}px)`;
 
   return (
     <div
       style={{
-        width: width,
-        height: "179px",
+        width: "100%",
         backgroundColor: "var(--dark-blue)",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
         paddingTop: "25px",
         paddingBottom: "25px",
-        paddingLeft: "20px",
-        paddingRight: "20px",
+        paddingLeft: "25px",
+        paddingRight: "25px",
         borderRadius: "4px",
       }}
     >
-      {/* Title */}
+      {/* Title Row */}
       <div
         style={{
-          fontFamily: '"Hero New", sans-serif',
-          fontWeight: 700,
-          fontSize: "18px",
-          lineHeight: "100%",
-          color: "var(--textWhite)",
-          marginBottom: "25px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          paddingBottom: "18px",
         }}
       >
-        Screen Wallet Addresses
+        <div
+          style={{
+            fontFamily: '"Hero New", sans-serif',
+            fontWeight: 700,
+            fontSize: "18px",
+            lineHeight: "100%",
+            color: "var(--textWhite)",
+paddingTop: "10px"               }}
+        >
+          Screen Wallet Addresses
+        </div>
+        <button
+          type="button"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "18px 26px",
+            borderRadius: "4px",
+            border: "none",
+            backgroundColor: "var(--input-field-blue)",
+            color: "var(--blue)",
+            cursor: "pointer",
+            fontFamily: '"Hero New", sans-serif',
+            fontSize: "15px",
+            fontWeight: 500,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <img
+            src="/uploadFile.svg"
+            alt=""
+            style={{ width: "12px", height: "16px" }}
+          />
+          Bulk Wallet Screening
+        </button>
       </div>
 
       {/* Input and Button Row */}
@@ -46,41 +73,19 @@ export default function WalletScreenResultsTable() {
           gap: "10px",
         }}
       >
-        {/* Labels Row */}
-        <div
+        {/* Label */}
+        <label
+          htmlFor="wallet-address"
           style={{
-            display: "flex",
-            gap: "12px",
-            alignItems: "flex-start",
+            display: "block",
+            color: "var(--textGrey)",
+            lineHeight: "100%",
+            fontFamily: '"Hero New", sans-serif',
+            fontSize: "14px",
           }}
         >
-          <label
-            htmlFor="wallet-address"
-            style={{
-              width: "764px",
-              display: "block",
-              color: "var(--textGrey)",
-              lineHeight: "100%",
-              fontFamily: '"Hero New", sans-serif',
-              fontSize: "14px",
-            }}
-          >
-            Wallet Addresses
-          </label>
-          <label
-            htmlFor="blockchain"
-            style={{
-              width: "300px",
-              display: "block",
-              color: "var(--textGrey)",
-              lineHeight: "100%",
-              fontFamily: '"Hero New", sans-serif',
-              fontSize: "14px",
-            }}
-          >
-            Blockchain
-          </label>
-        </div>
+          Wallet Address
+        </label>
         {/* Inputs Row */}
         <div
           style={{
@@ -94,6 +99,8 @@ export default function WalletScreenResultsTable() {
               position: "relative",
               display: "flex",
               alignItems: "center",
+              flex: 1,
+              minWidth: 0,
             }}
           >
             <img
@@ -114,9 +121,9 @@ export default function WalletScreenResultsTable() {
               onChange={(e) => setWalletAddress(e.target.value)}
               placeholder="Enter wallet address"
               style={{
-                width: "764px",
+                width: "100%",
                 height: "54px",
-                padding: "0.75rem 0.75rem 0.75rem 2.75rem",
+                padding: "0.75rem 2.75rem 0.75rem 2.75rem",
                 borderRadius: "4px",
                 border: "1px solid var(--input-field-border)",
                 backgroundColor: "var(--input-field-blue)",
@@ -126,33 +133,21 @@ export default function WalletScreenResultsTable() {
                 fontSize: "14px",
               }}
             />
+            {walletAddress && (
+              <img
+                src="/xGrey.svg"
+                alt="Clear"
+                onClick={() => setWalletAddress("")}
+                style={{ position: "absolute", right: 16, top: 15, width: 16, height: 24, cursor: "pointer" }}
+              />
+            )}
           </div>
-          <select
-            id="blockchain"
-            value={blockchain}
-            onChange={(e) => setBlockchain(e.target.value)}
-            style={{
-              width: "300px",
-              height: "54px",
-              padding: "0.75rem",
-              borderRadius: "4px",
-              border: "1px solid var(--input-field-border)",
-              backgroundColor: "var(--input-field-blue)",
-              color: "var(--textWhite)",
-              boxSizing: "border-box",
-              fontFamily: '"Hero New", sans-serif',
-              fontSize: "14px",
-              cursor: "pointer",
-            }}
-          >
-            <option value="ETH">Ethereum (ETH)</option>
-            <option value="BTC">Bitcoin (BTC)</option>
-          </select>
           <button
             type="button"
             style={{
               height: "54px",
               width: "100px",
+              flexShrink: 0,
               padding: "0",
               borderRadius: "4px",
               border: "none",

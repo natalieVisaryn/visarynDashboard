@@ -1,13 +1,7 @@
-<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-<circle cx="20" cy="20" r="20" fill="#1B1E23" style="fill:#1B1E23;fill:color(display-p3 0.1059 0.1176 0.1373);fill-opacity:1;"/>
-<g clip-path="url(#clip0_565_1039)">
-<path d="M20 36C28.8366 36 36 28.8366 36 20C36 11.1634 28.8366 4 20 4C11.1634 4 4 11.1634 4 20C4 28.8366 11.1634 36 20 36Z" stroke="#1F4B1B" style="stroke:#1F4B1B;stroke:color(display-p3 0.1216 0.2941 0.1059);stroke-opacity:1;" stroke-width="4" stroke-miterlimit="10"/>
-<path d="M20 4C23.515 4 26.765 5.135 29.405 7.055" stroke="#00BC2B" style="stroke:#00BC2B;stroke:color(display-p3 0.0000 0.7373 0.1686);stroke-opacity:1;" stroke-width="4" stroke-miterlimit="10"/>
-</g>
-<path d="M19.6376 25V17.104L17.2296 18.098V16.138L21.4156 14.486H21.5696V25H19.6376Z" fill="#EDF8EC" style="fill:#EDF8EC;fill:color(display-p3 0.9294 0.9725 0.9255);fill-opacity:1;"/>
-<defs>
-<clipPath id="clip0_565_1039">
-<rect width="36" height="36" fill="white" style="fill:white;fill-opacity:1;" transform="translate(2 2)"/>
-</clipPath>
-</defs>
+<svg width="80" height="60" viewBox="0 0 80 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="80" height="60" rx="30" fill="#1B1E23" style="fill:#1B1E23;fill:color(display-p3 0.1059 0.1176 0.1373);fill-opacity:1;"/>
+<rect x="3" y="3" width="74" height="54" rx="27" fill="#214B1B" style="fill:#214B1B;fill:color(display-p3 0.1294 0.2941 0.1059);fill-opacity:1;"/>
+<path d="M50 3C53.1144 3 56.105 3.52885 58.8887 4.49902L40 30V3H50Z" fill="#4EB944" style="fill:#4EB944;fill:color(display-p3 0.3059 0.7255 0.2667);fill-opacity:1;"/>
+<rect x="9" y="9" width="62" height="42" rx="21" fill="#1B1E23" style="fill:#1B1E23;fill:color(display-p3 0.1059 0.1176 0.1373);fill-opacity:1;"/>
+<path d="M25.9764 36V26.976L23.2244 28.112V25.872L28.0084 23.984H28.1844V36H25.9764ZM30.6288 38.144L36.0048 21.952H38.1168L32.7248 38.144H30.6288ZM41.9452 36V26.976L39.1932 28.112V25.872L43.9772 23.984H44.1532V36H41.9452ZM51.7176 23.808C54.3576 23.808 56.4856 26.192 56.4856 30.048C56.4856 33.888 54.3576 36.272 51.7176 36.272C49.0936 36.272 46.9816 33.888 46.9816 30.048C46.9816 26.192 49.0936 23.808 51.7176 23.808ZM51.7176 25.888C50.3256 25.888 49.2216 27.408 49.2216 30.048C49.2216 32.672 50.3256 34.176 51.7176 34.176C53.1256 34.176 54.2776 32.656 54.2776 30.048C54.2776 27.408 53.1256 25.888 51.7176 25.888Z" fill="#EDF8EC" style="fill:#EDF8EC;fill:color(display-p3 0.9294 0.9725 0.9255);fill-opacity:1;"/>
 </svg>
