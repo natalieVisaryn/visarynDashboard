@@ -4,33 +4,25 @@ import AddEditOrgBlacklist from "./AddEditOrgBlacklist";
 import PageHeader from "./PageHeader";
 import PageLayout from "./PageLayout";
 import ScreeningHistoryDetail from "./ScreeningHistoryDetail";
+import DecisionRationale from "./DecisionRationale";
+import LoadingSpinner from "./LoadingSpinner";
+import WalletScreenBanner from "./WalletScreenBanner";
 import { API_BASE_URL } from "../utils/auth";
 import {
   type WalletScoreDetail,
   riskScoreColors,
   formatDate,
   formatTitle,
-  directMatchText,
-  walletActivity,
-  walletAge,
-  fundingSource,
 } from "./screeningUtils";
+import {
+  type WalletScreenBannerState,
+  validateWalletInputForScreen,
+  requestWalletScreenId,
+} from "./walletScreenFlow";
 
 function truncateAddress(addr: string): string {
   if (addr.length <= 12) return addr;
   return `${addr.slice(0, 4)}-${addr.slice(-4)}`;
-}
-
-function StatusIcon({ type }: { type: "good" | "warn" | "bad" }) {
-  if (type === "good") return <img src="/greenCircleWithCheck.svg" alt="" style={{ width: 18, height: 18 }} />;
-  if (type === "warn") return <img src="/alertOrange.svg" alt="" style={{ width: 18, height: 16 }} />;
-  return <img src="/escalateIcon.svg" alt="" style={{ width: 18, height: 18 }} />;
-}
-
-function InfoIcon() {
-  return (
-    <img src="/infoIconGrey.svg" alt="" style={{ width: 14, height: 14, opacity: 0.7 }} />
-  );
 }
 
 type WalletScoreHistoryItem = {
@@ -58,6 +50,7 @@ const historyThStyle: React.CSSProperties = {
 
 const historyTdStyle: React.CSSProperties = {
   padding: "1rem",
+  verticalAlign: "middle",
   fontFamily: '"Hero New", sans-serif',
   fontSize: "14px",
   color: "var(--text-grey-white)",
@@ -128,6 +121,8 @@ export default function ScreeningDetail() {
   const savedScrollRef = useRef<number | null>(null);
 
   const [walletInput, setWalletInput] = useState("");
+  const [walletScreenBanner, setWalletScreenBanner] = useState<WalletScreenBannerState | null>(null);
+  const [walletScreenSubmitting, setWalletScreenSubmitting] = useState(false);
 
   const [historyData, setHistoryData] = useState<WalletScoreHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -200,6 +195,28 @@ export default function ScreeningDetail() {
       setTimeout(() => setShowCopyNotification(false), 3000);
     } catch (err) {
       console.error("Failed to copy", err);
+    }
+  };
+
+  const dismissWalletScreenBanner = () => setWalletScreenBanner(null);
+
+  const handleScreen = async () => {
+    setWalletScreenBanner(null);
+    const validated = validateWalletInputForScreen(walletInput);
+    if (!validated.ok) {
+      setWalletScreenBanner(validated.banner);
+      return;
+    }
+    setWalletScreenSubmitting(true);
+    try {
+      const result = await requestWalletScreenId(validated.address);
+      if (result.ok) {
+        navigate(`/screenings/${result.id}`);
+        return;
+      }
+      setWalletScreenBanner(result.banner);
+    } finally {
+      setWalletScreenSubmitting(false);
     }
   };
 
@@ -278,28 +295,123 @@ export default function ScreeningDetail() {
                 Bulk Wallet Screening
               </button>
             </div>
-            <div style={{ color: "var(--textGrey)", marginBottom: "10px", fontSize: "14px" }}>Wallet Address</div>
-            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-              <div style={{ position: "relative", flex: 1 }}>
-                <img src="/GreyMagnifyingGlass.svg" alt="" style={{ position: "absolute", left: 16, top: 18, width: 18, height: 18 }} />
-                <input
-                  placeholder="Enter Wallet Address"
-                  value={walletInput}
-                  onChange={(e) => setWalletInput(e.target.value)}
-                  style={{ width: "100%", height: "54px", borderRadius: "4px", border: "1px solid var(--input-field-border)", backgroundColor: "var(--input-field-blue)", color: "var(--textWhite)", padding: "0 40px", fontSize: "14px" }}
-                />
-                {walletInput && (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
+              <WalletScreenBanner banner={walletScreenBanner} onDismiss={dismissWalletScreenBanner} />
+
+              <label
+                htmlFor="screen-detail-wallet-address"
+                style={{
+                  display: "block",
+                  color: "var(--textGrey)",
+                  lineHeight: "100%",
+                  fontFamily: '"Hero New", sans-serif',
+                  fontSize: "14px",
+                }}
+              >
+                Wallet Address
+              </label>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  alignItems: "flex-start",
+                }}
+              >
+                <div
+                  style={{
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
                   <img
-                    src="/xGrey.svg"
-                    alt="Clear"
-                    onClick={() => setWalletInput("")}
-                    style={{ position: "absolute", right: 16, top: 15, width: 16, height: 24, cursor: "pointer" }}
+                    src="/GreyMagnifyingGlass.svg"
+                    alt="Search"
+                    style={{
+                      position: "absolute",
+                      left: "1rem",
+                      width: "18px",
+                      height: "18px",
+                      pointerEvents: "none",
+                    }}
                   />
-                )}
+                  <input
+                    id="screen-detail-wallet-address"
+                    type="text"
+                    placeholder="Enter wallet address"
+                    value={walletInput}
+                    onChange={(e) => setWalletInput(e.target.value)}
+                    disabled={walletScreenSubmitting}
+                    style={{
+                      width: "100%",
+                      height: "54px",
+                      padding: "0.75rem 2.75rem 0.75rem 2.75rem",
+                      borderRadius: "4px",
+                      border: "1px solid var(--input-field-border)",
+                      backgroundColor: "var(--input-field-blue)",
+                      color: "var(--textWhite)",
+                      boxSizing: "border-box",
+                      fontFamily: '"Hero New", sans-serif',
+                      fontSize: "14px",
+                      opacity: walletScreenSubmitting ? 0.7 : 1,
+                    }}
+                  />
+                  {walletInput && !walletScreenSubmitting && (
+                    <img
+                      src="/xGrey.svg"
+                      alt="Clear"
+                      onClick={() => setWalletInput("")}
+                      style={{
+                        position: "absolute",
+                        right: 16,
+                        top: 15,
+                        width: 16,
+                        height: 24,
+                        cursor: "pointer",
+                      }}
+                    />
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={walletScreenSubmitting}
+                  style={{
+                    height: "54px",
+                    width: "100px",
+                    flexShrink: 0,
+                    padding: "0",
+                    borderRadius: "4px",
+                    border: "none",
+                    backgroundColor: "var(--blue)",
+                    color: "var(--text-dark-blue)",
+                    cursor: walletScreenSubmitting ? "not-allowed" : "pointer",
+                    fontWeight: 500,
+                    fontFamily: '"Hero New", sans-serif',
+                    fontSize: "16px",
+                    whiteSpace: "nowrap",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    opacity: walletScreenSubmitting ? 0.7 : 1,
+                  }}
+                  onClick={handleScreen}
+                  aria-busy={walletScreenSubmitting}
+                >
+                  {walletScreenSubmitting ? (
+                    <LoadingSpinner size={20} aria-label="Screening wallet" />
+                  ) : (
+                    "Screen"
+                  )}
+                </button>
               </div>
-              <button type="button" style={{ width: "100px", height: "54px", border: "none", borderRadius: "4px", backgroundColor: "var(--blue)", color: "var(--text-dark-blue)", fontSize: "16px", cursor: "pointer" }}>
-                Screen
-              </button>
             </div>
           </div>
 
@@ -454,56 +566,7 @@ export default function ScreeningDetail() {
                     </div>
                     <div style={{ borderTop: "1px solid var(--input-field-border)", marginBottom: "20px" }} />
 
-                    <div style={{ fontWeight: 500, fontSize: "15px", color: "var(--text-grey-white)", marginTop: "28px", marginBottom: "15px" }}>
-                      Blacklist &amp; Sanctions Intelligence
-                    </div>
-                    <div style={{ borderTop: "1px solid var(--input-field-blue)" }} />
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--input-field-blue)",  marginBottom: "10px", padding: "10px 0" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-grey-white)", fontSize: "14px", fontWeight: 400 }}>
-                        Direct Match with Known Blacklists <InfoIcon />
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--text-grey-white)", fontSize: "13px" }}>
-                        {directMatchText(entry)}
-                        <StatusIcon type={directMatchText(entry) === "No direct matches" ? "good" : "bad"} />
-                      </div>
-                    </div>
-
-                    <div style={{ fontWeight: 500, fontSize: "15px", color: "var(--text-grey-white)", marginTop: "28px", marginBottom: "15px"}}>
-                      Transactional Patterns
-                    </div>
-                    <div style={{ borderTop: "1px solid var(--input-field-blue)" }} />
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--input-field-blue)",  marginBottom: "10px", padding: "10px 0"  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-grey-white)", fontSize: "14px", fontWeight: 400 }}>
-                    Wallet Activity <InfoIcon />
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--text-grey-white)", fontSize: "13px" }}>
-                        {walletActivity(entry.ruleIds)}
-                        <StatusIcon type={entry.ruleIds.includes("INACTIVE_180D") ? "good" : "warn"} />
-                      </div>
-                    </div>
-
-                    <div style={{ fontWeight: 500, fontSize: "15px", color: "var(--text-grey-white)", marginTop: "28px", marginBottom: "15px" }}>
-                      Wallet Identity &amp; Origin
-                    </div>
-                    <div style={{ borderTop: "1px solid var(--input-field-blue)" }} />
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--input-field-blue)",  marginBottom: "10px", padding: "10px 0"  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-grey-white)", fontSize: "14px", fontWeight: 400 }}>
-                    Wallet Age <InfoIcon />
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--text-grey-white)", fontSize: "13px" }}>
-                        {walletAge(entry.riskFactors)}
-                        <StatusIcon type={walletAge(entry.riskFactors).includes("more than 7") ? "good" : "warn"} />
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--input-field-blue)",  marginBottom: "10px", padding: "10px 0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-grey-white)", fontSize: "14px", fontWeight: 400 }}>
-                    Funding Source <InfoIcon />
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--text-grey-white)", fontSize: "13px" }}>
-                        {fundingSource(entry.ruleIds)}
-                        <StatusIcon type={fundingSource(entry.ruleIds) === "Centralized Exchange(s)" ? "good" : "warn"} />
-                      </div>
-                    </div>
+                    <DecisionRationale riskFactors={entry.riskFactors} />
 
                     <div style={{ fontWeight: 700, fontSize: "18px", color: "var(--textWhite)", marginTop: "38px", marginBottom: "14px" }}>
                       Screening Summary
@@ -620,21 +683,23 @@ export default function ScreeningDetail() {
                                     <img
                                       src={`/${row.riskScore}score.svg`}
                                       alt={`Score ${row.riskScore}`}
-                                      style={{ width: "40px", height: "40px" }}
+                                      style={{ width: "40px", height: "40px", display: "block" }}
                                     />
                                     <span>{formatTitle(row.riskLevel)}</span>
                                   </div>
                                 </td>
                                 <td style={historyTdStyle}>
-                                  {row.recommendedAction === "Allow" ? (
-                                    <img src="/allow.svg" alt="Allow" style={{ width: "76px", height: "24px" }} />
-                                  ) : row.recommendedAction === "Review" ? (
-                                    <img src="/review.svg" alt="Review" style={{ width: "94px", height: "24px" }} />
-                                  ) : row.recommendedAction === "Escalate" ? (
-                                    <img src="/escalate.svg" alt="Escalate" style={{ width: "94px", height: "24px" }} />
-                                  ) : (
-                                    row.recommendedAction
-                                  )}
+                                  <div style={{ display: "flex", alignItems: "center" }}>
+                                    {row.recommendedAction === "Allow" ? (
+                                      <img src="/allow.svg" alt="Allow" style={{ width: "76px", height: "24px", display: "block" }} />
+                                    ) : row.recommendedAction === "Review" ? (
+                                      <img src="/review.svg" alt="Review" style={{ width: "94px", height: "24px", display: "block" }} />
+                                    ) : row.recommendedAction === "Escalate" ? (
+                                      <img src="/escalate.svg" alt="Escalate" style={{ width: "94px", height: "24px", display: "block" }} />
+                                    ) : (
+                                      row.recommendedAction
+                                    )}
+                                  </div>
                                 </td>
                                 <td style={historyTdStyle}>{formatTitle(row.decisionConfidence)}</td>
                                 <td style={historyTdStyle}>{row.rulesetVersion}</td>

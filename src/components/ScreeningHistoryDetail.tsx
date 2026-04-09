@@ -1,27 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE_URL } from "../utils/auth";
+import DecisionRationale from "./DecisionRationale";
 import {
   type WalletScoreDetail,
   riskScoreColors,
   formatDate,
   formatTitle,
-  directMatchText,
-  walletActivity,
-  walletAge,
-  fundingSource,
 } from "./screeningUtils";
-
-function StatusIcon({ type }: { type: "good" | "warn" | "bad" }) {
-  if (type === "good") return <img src="/greenCircleWithCheck.svg" alt="" style={{ width: 18, height: 18 }} />;
-  if (type === "warn") return <img src="/alertOrange.svg" alt="" style={{ width: 18, height: 16 }} />;
-  return <img src="/escalateIcon.svg" alt="" style={{ width: 18, height: 18 }} />;
-}
-
-function InfoIcon() {
-  return (
-    <img src="/infoIconGrey.svg" alt="" style={{ width: 14, height: 14, opacity: 0.7 }} />
-  );
-}
 
 interface Props {
   screeningId: string;
@@ -175,56 +160,7 @@ export default function ScreeningHistoryDetail({ screeningId, onBack }: Props) {
       </div>
       <div style={{ borderTop: "1px solid var(--input-field-border)", marginBottom: "20px" }} />
 
-      <div style={{ fontWeight: 500, fontSize: "15px", color: "var(--text-grey-white)", marginTop: "28px", marginBottom: "15px" }}>
-        Blacklist &amp; Sanctions Intelligence
-      </div>
-      <div style={{ borderTop: "1px solid var(--input-field-blue)" }} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--input-field-blue)", marginBottom: "10px", padding: "10px 0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-grey-white)", fontSize: "14px", fontWeight: 400 }}>
-          Direct Match with Known Blacklists <InfoIcon />
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--text-grey-white)", fontSize: "13px" }}>
-          {directMatchText(entry)}
-          <StatusIcon type={directMatchText(entry) === "No direct matches" ? "good" : "bad"} />
-        </div>
-      </div>
-
-      <div style={{ fontWeight: 500, fontSize: "15px", color: "var(--text-grey-white)", marginTop: "28px", marginBottom: "15px" }}>
-        Transactional Patterns
-      </div>
-      <div style={{ borderTop: "1px solid var(--input-field-blue)" }} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--input-field-blue)", marginBottom: "10px", padding: "10px 0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-grey-white)", fontSize: "14px", fontWeight: 400 }}>
-          Wallet Activity <InfoIcon />
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--text-grey-white)", fontSize: "13px" }}>
-          {walletActivity(entry.ruleIds)}
-          <StatusIcon type={entry.ruleIds.includes("INACTIVE_180D") ? "good" : "warn"} />
-        </div>
-      </div>
-
-      <div style={{ fontWeight: 500, fontSize: "15px", color: "var(--text-grey-white)", marginTop: "28px", marginBottom: "15px" }}>
-        Wallet Identity &amp; Origin
-      </div>
-      <div style={{ borderTop: "1px solid var(--input-field-blue)" }} />
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--input-field-blue)", marginBottom: "10px", padding: "10px 0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-grey-white)", fontSize: "14px", fontWeight: 400 }}>
-          Wallet Age <InfoIcon />
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--text-grey-white)", fontSize: "13px" }}>
-          {walletAge(entry.riskFactors)}
-          <StatusIcon type={walletAge(entry.riskFactors).includes("more than 7") ? "good" : "warn"} />
-        </div>
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--input-field-blue)", marginBottom: "10px", padding: "10px 0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-grey-white)", fontSize: "14px", fontWeight: 400 }}>
-          Funding Source <InfoIcon />
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "var(--text-grey-white)", fontSize: "13px" }}>
-          {fundingSource(entry.ruleIds)}
-          <StatusIcon type={fundingSource(entry.ruleIds) === "Centralized Exchange(s)" ? "good" : "warn"} />
-        </div>
-      </div>
+      <DecisionRationale riskFactors={entry.riskFactors} />
 
       <div style={{ fontWeight: 700, fontSize: "18px", color: "var(--textWhite)", marginTop: "38px", marginBottom: "14px" }}>
         Screening Summary

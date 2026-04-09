@@ -123,3 +123,22 @@ a {
 .blacklist-table-scroll::-webkit-scrollbar-corner {
   background: var(--very-dark-blue);
 }
+
+@keyframes visaryn-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.visaryn-spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border-style: solid;
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--text-dark-blue) 32%, transparent);
+  border-top-color: var(--text-dark-blue);
+  animation: visaryn-spinner-rotate 0.55s linear infinite;
+  vertical-align: middle;
+}

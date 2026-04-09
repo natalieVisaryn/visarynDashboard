@@ -447,6 +447,7 @@ export default function WalletSearchResultTable() {
                   <td
                     style={{
                       padding: "1rem",
+                      verticalAlign: "middle",
                       fontFamily: '"Hero New", sans-serif',
                       fontSize: "13px",
                       fontWeight: 400,
@@ -459,6 +460,7 @@ export default function WalletSearchResultTable() {
                   <td
                     style={{
                       padding: "1rem",
+                      verticalAlign: "middle",
                       fontFamily: '"Hero New", sans-serif',
                       fontSize: "13px",
                       fontWeight: 400,
@@ -489,6 +491,7 @@ export default function WalletSearchResultTable() {
                   <td
                     style={{
                       padding: "1rem",
+                      verticalAlign: "middle",
                       fontFamily: '"Hero New", sans-serif',
                       fontSize: "13px",
                       fontWeight: 400,
@@ -532,6 +535,7 @@ export default function WalletSearchResultTable() {
                   <td
                     style={{
                       padding: "1rem",
+                      verticalAlign: "middle",
                       fontFamily: '"Hero New", sans-serif',
                       fontSize: "13px",
                       fontWeight: 400,
@@ -548,7 +552,7 @@ export default function WalletSearchResultTable() {
                       <img
                         src={`/${row.riskScore}score.svg`}
                         alt={`Risk Score ${row.riskScore}`}
-                        style={{ width: "54px", height: "40px" }}
+                        style={{ width: "54px", height: "40px", display: "block" }}
                       />
                       <span>{row.riskLevel.charAt(0).toUpperCase() + row.riskLevel.slice(1).toLowerCase()}</span>
                     </div>
@@ -556,38 +560,41 @@ export default function WalletSearchResultTable() {
                   <td
                     style={{
                       padding: "1rem",
+                      verticalAlign: "middle",
                       fontFamily: '"Hero New", sans-serif',
                       fontSize: "13px",
                       fontWeight: 400,
                       color: "var(--textWhite)",
-                      display: "flex",
                     }}
                   >
-                    {row.recommendedAction === "Allow" ? (
-                      <img
-                        src="/allow.svg"
-                        alt="Allow"
-                        style={{ width: "76px", height: "24px" }}
-                      />
-                    ) : row.recommendedAction === "Review" ? (
-                      <img
-                        src="/review.svg"
-                        alt="Review"
-                        style={{ width: "94px", height: "24px" }}
-                      />
-                    ) : row.recommendedAction === "Escalate" ? (
-                      <img
-                        src="/escalate.svg"
-                        alt="Escalate"
-                        style={{ width: "94px", height: "24px" }}
-                      />
-                    ) : (
-                      row.recommendedAction
-                    )}
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      {row.recommendedAction === "Allow" ? (
+                        <img
+                          src="/allow.svg"
+                          alt="Allow"
+                          style={{ width: "76px", height: "24px", display: "block" }}
+                        />
+                      ) : row.recommendedAction === "Review" ? (
+                        <img
+                          src="/review.svg"
+                          alt="Review"
+                          style={{ width: "94px", height: "24px", display: "block" }}
+                        />
+                      ) : row.recommendedAction === "Escalate" ? (
+                        <img
+                          src="/escalate.svg"
+                          alt="Escalate"
+                          style={{ width: "94px", height: "24px", display: "block" }}
+                        />
+                      ) : (
+                        row.recommendedAction
+                      )}
+                    </div>
                   </td>
                   <td
                     style={{
                       padding: "1rem",
+                      verticalAlign: "middle",
                       fontFamily: '"Hero New", sans-serif',
                       fontSize: "13px",
                       fontWeight: 400,
@@ -599,6 +606,7 @@ export default function WalletSearchResultTable() {
                   <td
                     style={{
                       padding: "1rem",
+                      verticalAlign: "middle",
                       fontFamily: '"Hero New", sans-serif',
                       fontSize: "13px",
                       fontWeight: 400,
