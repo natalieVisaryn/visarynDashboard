@@ -1,7 +1,42 @@
-import  { useState } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import LoadingSpinner from "./LoadingSpinner";
+import WalletScreenBanner from "./WalletScreenBanner";
+import {
+  type WalletScreenBannerState,
+  validateWalletInputForScreen,
+  requestWalletScreenId,
+} from "./walletScreenFlow";
 
 export default function WalletScreenResultsTable() {
+  const navigate = useNavigate();
   const [walletAddress, setWalletAddress] = useState("");
+  const [banner, setBanner] = useState<WalletScreenBannerState | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const dismissBanner = () => setBanner(null);
+
+  const handleScreen = async () => {
+    setBanner(null);
+
+    const validated = validateWalletInputForScreen(walletAddress);
+    if (!validated.ok) {
+      setBanner(validated.banner);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await requestWalletScreenId(validated.address);
+      if (result.ok) {
+        navigate(`/screenings/${result.id}`);
+        return;
+      }
+      setBanner(result.banner);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div
@@ -18,7 +53,6 @@ export default function WalletScreenResultsTable() {
         borderRadius: "4px",
       }}
     >
-      {/* Title Row */}
       <div
         style={{
           display: "flex",
@@ -34,7 +68,8 @@ export default function WalletScreenResultsTable() {
             fontSize: "18px",
             lineHeight: "100%",
             color: "var(--textWhite)",
-paddingTop: "10px"               }}
+            paddingTop: "10px",
+          }}
         >
           Screen Wallet Addresses
         </div>
@@ -65,7 +100,6 @@ paddingTop: "10px"               }}
         </button>
       </div>
 
-      {/* Input and Button Row */}
       <div
         style={{
           display: "flex",
@@ -73,7 +107,8 @@ paddingTop: "10px"               }}
           gap: "10px",
         }}
       >
-        {/* Label */}
+        <WalletScreenBanner banner={banner} onDismiss={dismissBanner} />
+
         <label
           htmlFor="wallet-address"
           style={{
@@ -86,7 +121,6 @@ paddingTop: "10px"               }}
         >
           Wallet Address
         </label>
-        {/* Inputs Row */}
         <div
           style={{
             display: "flex",
@@ -120,6 +154,7 @@ paddingTop: "10px"               }}
               value={walletAddress}
               onChange={(e) => setWalletAddress(e.target.value)}
               placeholder="Enter wallet address"
+              disabled={submitting}
               style={{
                 width: "100%",
                 height: "54px",
@@ -131,19 +166,28 @@ paddingTop: "10px"               }}
                 boxSizing: "border-box",
                 fontFamily: '"Hero New", sans-serif',
                 fontSize: "14px",
+                opacity: submitting ? 0.7 : 1,
               }}
             />
-            {walletAddress && (
+            {walletAddress && !submitting && (
               <img
                 src="/xGrey.svg"
                 alt="Clear"
                 onClick={() => setWalletAddress("")}
-                style={{ position: "absolute", right: 16, top: 15, width: 16, height: 24, cursor: "pointer" }}
+                style={{
+                  position: "absolute",
+                  right: 16,
+                  top: 15,
+                  width: 16,
+                  height: 24,
+                  cursor: "pointer",
+                }}
               />
             )}
           </div>
           <button
             type="button"
+            disabled={submitting}
             style={{
               height: "54px",
               width: "100px",
@@ -153,7 +197,7 @@ paddingTop: "10px"               }}
               border: "none",
               backgroundColor: "var(--blue)",
               color: "var(--text-dark-blue)",
-              cursor: "pointer",
+              cursor: submitting ? "not-allowed" : "pointer",
               fontWeight: 500,
               fontFamily: '"Hero New", sans-serif',
               fontSize: "16px",
@@ -161,32 +205,12 @@ paddingTop: "10px"               }}
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              opacity: submitting ? 0.7 : 1,
             }}
-            onClick={async () => {
-              // try {
-              //   const API_URL = process.env.NEXT_PUBLIC_API_URL;
-                
-              //   if (!API_URL) {
-              //     console.error("NEXT_PUBLIC_API_URL is not set");
-              //     return;
-              //   }
-                
-              //   console.log("Calling API:", API_URL);
-                
-              //   const response = await fetch(`${API_URL}/`);
-                
-              //   if (!response.ok) {
-              //     throw new Error(`HTTP error! status: ${response.status}`);
-              //   }
-                
-              //   const data = await response.text();
-              //   console.log("API Response:", data);
-              // } catch (error) {
-              //   console.error("Error fetching:", error);
-              // }
-            }}
+            onClick={handleScreen}
+            aria-busy={submitting}
           >
-            Screen
+            {submitting ? <LoadingSpinner size={20} aria-label="Screening wallet" /> : "Screen"}
           </button>
         </div>
       </div>

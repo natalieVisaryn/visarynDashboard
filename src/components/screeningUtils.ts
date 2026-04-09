@@ -47,48 +47,139 @@ export function formatTitle(value: string): string {
     .join(" ");
 }
 
-export function ruleIdsText(data: WalletScoreDetail): string {
-  const ids: string[] = [];
-  if (data.ruleIds.includes("SANCTIONS_DIRECT_MATCH")) ids.push("SANCTIONS_DIRECT_MATCH");
-  if (data.ruleIds.includes("ENFORCEMENT_DIRECT_MATCH")) ids.push("ENFORCEMENT_DIRECT_MATCH");
-  if (data.blacklist.length > 0) ids.push("BLACKLIST_DIRECT_MATCH");
-  return ids.join(", ");
+/** Substrings / prefixes matched against `riskFactors` entries for Decision Rationale rows. */
+export const DECISION_RATIONALE_FACTORS = {
+  SANCTIONS_DIRECT: "Direct match on sanctions list (OFAC/EU/UK)",
+  ENFORCEMENT_DIRECT: "Direct match on enforcement list (DOJ advisory)",
+  SYSTEM_BLACKLIST_PREFIX: "System blacklist match (confidence:",
+  REGULATOR_TX_30D: "Direct transaction with regulator-critical wallet in last 30 days",
+  BLACKLIST_TX_30D: "Direct transaction with blacklisted wallet in last 30 days",
+  WALLET_FIRST_SEEN_2D: "Wallet first seen within last 2 days",
+  WALLET_FIRST_SEEN_7D: "Wallet first seen within last 7 days",
+  INACTIVE_180D: "No wallet activity in last 180 days",
+  CEX_PRIMARY_90D: "Primarily funded from labeled CEX sources (last 90 days, based on transaction value)",
+  CEX_INITIAL: "Initially funded from labeled CEX source",
+} as const;
+
+export type RationaleStatusIcon = "green" | "orange" | "redHex";
+
+export type DecisionRationaleRow = {
+  label: string;
+  value: "Yes" | "No";
+  icon: RationaleStatusIcon;
+};
+
+export type DecisionRationaleSection = {
+  title: string;
+  rows: DecisionRationaleRow[];
+};
+
+function riskFactorIncludes(factors: string[], needle: string): boolean {
+  return factors.some((f) => f.includes(needle));
 }
 
-export function directMatchText(data: WalletScoreDetail): string {
-  const sanctions = data.sanctionsLists.map(formatTitle);
-  const blacklist = data.blacklist;
-  const listPart = [...sanctions, ...blacklist].join(", ");
-  const rulePart = ruleIdsText(data);
-
-  if (!listPart && !rulePart) return "No direct matches";
-  if (listPart && rulePart) return `${listPart} • Rule ID: ${rulePart}`;
-  if (listPart) return listPart;
-  return `Rule ID: ${rulePart}`;
+function hasSystemBlacklistMatch(factors: string[]): boolean {
+  return factors.some((f) => f.startsWith(DECISION_RATIONALE_FACTORS.SYSTEM_BLACKLIST_PREFIX));
 }
 
-export function walletActivity(ruleIds: string[]): string {
-  return ruleIds.includes("INACTIVE_180D")
-    ? "Inactive > 180 days"
-    : "Inactive < 180 days";
-}
+/** Two-column Decision Rationale data: left then right column sections. */
+export function getDecisionRationaleLayout(riskFactors: string[]): {
+  left: DecisionRationaleSection[];
+  right: DecisionRationaleSection[];
+} {
+  const f = riskFactors;
 
-export function walletAge(riskFactors: string[]): string {
-  if (riskFactors.includes("Wallet first seen within last 2 days")) {
-    return "Wallet first seen within last 2 days";
-  }
-  if (riskFactors.includes("Wallet first seen within last 7 days")) {
-    return "Wallet first seen within last 7 days";
-  }
-  return "Wallet first seen more than 7 days ago.";
-}
+  const sanctionsHit = riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.SANCTIONS_DIRECT);
+  const dojHit = riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.ENFORCEMENT_DIRECT);
+  const blacklistHit = hasSystemBlacklistMatch(f);
+  const regTxHit = riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.REGULATOR_TX_30D);
+  const highRiskTxHit = riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.BLACKLIST_TX_30D);
+  const new2Hit = riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.WALLET_FIRST_SEEN_2D);
+  const new7Hit = riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.WALLET_FIRST_SEEN_7D);
+  const inactiveHit = riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.INACTIVE_180D);
+  const cexPrimaryHit = riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.CEX_PRIMARY_90D);
+  const cexInitialHit = riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.CEX_INITIAL);
 
-export function fundingSource(ruleIds: string[]): string {
-  if (
-    ruleIds.includes("CEX_PRIMARY_FUNDING_90D") ||
-    ruleIds.includes("CEX_INITIAL_FUNDING")
-  ) {
-    return "Centralized Exchange(s)";
-  }
-  return "Primarily via P2P transfers";
+  const left: DecisionRationaleSection[] = [
+    {
+      title: "Sanctions & Enforcement",
+      rows: [
+        {
+          label: "Direct match with sanctioned entity",
+          value: sanctionsHit ? "Yes" : "No",
+          icon: sanctionsHit ? "redHex" : "green",
+        },
+        {
+          label: "Direct match with DOJ-listed wallet",
+          value: dojHit ? "Yes" : "No",
+          icon: dojHit ? "redHex" : "green",
+        },
+      ],
+    },
+    {
+      title: "Known Risk Intelligence",
+      rows: [
+        {
+          label: "Direct Match with Known Blacklists",
+          value: blacklistHit ? "Yes" : "No",
+          icon: blacklistHit ? "orange" : "green",
+        },
+      ],
+    },
+    {
+      title: "Risky Counterparty Activity",
+      rows: [
+        {
+          label: "Recent transaction with sanctioned wallet (30 days)",
+          value: regTxHit ? "Yes" : "No",
+          icon: regTxHit ? "orange" : "green",
+        },
+        {
+          label: "Recent transaction with high-risk wallet (30 days)",
+          value: highRiskTxHit ? "Yes" : "No",
+          icon: highRiskTxHit ? "orange" : "green",
+        },
+      ],
+    },
+  ];
+
+  const right: DecisionRationaleSection[] = [
+    {
+      title: "Wallet Profile",
+      rows: [
+        {
+          label: "New wallet (first seen ≤2 days)",
+          value: new2Hit ? "Yes" : "No",
+          icon: new2Hit ? "orange" : "green",
+        },
+        {
+          label: "New wallet (first seen ≤7 days)",
+          value: new7Hit ? "Yes" : "No",
+          icon: new7Hit ? "orange" : "green",
+        },
+        {
+          label: "Inactive wallet (no activity 180+ days)",
+          value: inactiveHit ? "Yes" : "No",
+          icon: inactiveHit ? "orange" : "green",
+        },
+      ],
+    },
+    {
+      title: "Funding Profile",
+      rows: [
+        {
+          label: "Primarily funded by exchange (90 days)",
+          value: cexPrimaryHit ? "Yes" : "No",
+          icon: cexPrimaryHit ? "green" : "orange",
+        },
+        {
+          label: "Initially funded by known exchange",
+          value: cexInitialHit ? "Yes" : "No",
+          icon: cexInitialHit ? "green" : "orange",
+        },
+      ],
+    },
+  ];
+
+  return { left, right };
 }
