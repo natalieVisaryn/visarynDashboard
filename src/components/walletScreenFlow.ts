@@ -28,7 +28,7 @@ export async function readWalletScoreErrorMessage(res: Response): Promise<string
 const genericErrorBanner = (): WalletScreenBannerState => ({
   variant: "red",
   title: "Error",
-  body: "error scoring wallet.",
+  body: "Error scoring wallet.",
 });
 
 export type ValidateWalletScreenResult =

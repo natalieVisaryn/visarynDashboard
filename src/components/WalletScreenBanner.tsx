@@ -30,21 +30,21 @@ export default function WalletScreenBanner({ banner, onDismiss }: Props) {
         alignItems: "center",
         gap: "16px",
         padding: "16px 20px",
-        borderRadius: "8px",
-        backgroundColor: banner.variant === "amber" ? "var(--brown)" : "#8b0000",
+        borderRadius: "4px",
+        backgroundColor: banner.variant === "amber" ? "var(--amber)" :"var(--red)" ,
       }}
     >
       <img
-        src={banner.variant === "amber" ? "/alertOrange.svg" : "/escalateIcon.svg"}
+        src={banner.variant === "amber" ? "/alertOrange.svg" : "/redHexForbidden.svg"}
         alt=""
-        style={{ width: 24, height: 24, flexShrink: 0 }}
+        style={{ width: 32, height: 28, flexShrink: 0 }}
       />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
             fontFamily: '"Hero New", sans-serif',
-            fontSize: "15px",
-            fontWeight: 700,
+            fontSize: "16px",
+            fontWeight: 600,
             color: "var(--textWhite)",
             marginBottom: "6px",
           }}
@@ -54,7 +54,8 @@ export default function WalletScreenBanner({ banner, onDismiss }: Props) {
         <div
           style={{
             fontFamily: '"Hero New", sans-serif',
-            fontSize: "13px",
+            fontSize: "15px",
+            fontWeight: 400,
             color: "var(--text-grey-white)",
             lineHeight: 1.5,
           }}
