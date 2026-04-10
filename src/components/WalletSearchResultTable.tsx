@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { CSVLink } from "react-csv";
 import { API_BASE_URL } from "../utils/auth";
 
 interface WalletScore {
@@ -27,6 +28,29 @@ interface TableRow {
 
 function detectBlockchain(address: string): "ETH" | "BTC" {
   return address.startsWith("0x") ? "ETH" : "BTC";
+}
+
+/**
+ * Hard cap on rows in a single getAllWalletScores response (server-side). This is NOT the same as the
+ * "Show N per page" dropdown — when the UI asks for more than this, we issue multiple API requests and merge.
+ * If merge results look wrong, confirm with Network that `page` is 0-based indices of fixed-size chunks of this length.
+ */
+const GET_ALL_WALLET_SCORES_MAX_ROWS_PER_RESPONSE = 25;
+
+function mapWalletScoreToRow(score: WalletScore): TableRow {
+  return {
+    id: score.id,
+    walletAddress: score.walletAddress,
+    blockchain: detectBlockchain(score.walletAddress),
+    riskScore: score.riskScore,
+    riskLevel: score.riskLevel ?? "",
+    recommendedAction: score.recommendedAction,
+    timestamp: score.checkedAt,
+    confidence: score.decisionConfidence
+      ? score.decisionConfidence.charAt(0).toUpperCase() + score.decisionConfidence.slice(1)
+      : "",
+    ruleset: score.rulesetVersion ?? "",
+  };
 }
 
 function formatScreenedAt(timestamp: string): string {
@@ -79,6 +103,52 @@ function sortRows(rows: TableRow[], column: SortColumn | null, cycle: SortCycle)
   });
 }
 
+const CSV_HEADERS = [
+  { label: "Screened At", key: "screenedAt" },
+  { label: "Wallet Address", key: "walletAddress" },
+  { label: "Block Chain", key: "blockChain" },
+  { label: "Risk Score", key: "riskScore" },
+  { label: "Recommended Action", key: "recommendedAction" },
+  { label: "Confidence", key: "confidence" },
+  { label: "Ruleset", key: "ruleset" },
+] as const;
+
+function formatRiskLevelForCsv(level: string): string {
+  if (!level) return "";
+  return level.charAt(0).toUpperCase() + level.slice(1).toLowerCase();
+}
+
+function rowToCsvRecord(row: TableRow): Record<string, string> {
+  const level = formatRiskLevelForCsv(row.riskLevel);
+  const riskScoreText = level ? `${row.riskScore} ${level}` : String(row.riskScore);
+  return {
+    screenedAt: formatScreenedAt(row.timestamp),
+    walletAddress: row.walletAddress,
+    blockChain: row.blockchain,
+    riskScore: riskScoreText,
+    recommendedAction: row.recommendedAction,
+    confidence: row.confidence,
+    ruleset: row.ruleset,
+  };
+}
+
+const EXPORT_CONTROL_STYLE: React.CSSProperties = {
+  height: "48px",
+  padding: "0px 20px",
+  borderRadius: "4px",
+  border: "1px solid var(--blue)",
+  backgroundColor: "var(--very-dark-blue)",
+  color: "var(--blue)",
+  cursor: "pointer",
+  fontWeight: 500,
+  fontFamily: '"Hero New", sans-serif',
+  fontSize: "15px",
+  whiteSpace: "nowrap",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
 export default function WalletSearchResultTable() {
   const navigate = useNavigate();
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -117,28 +187,38 @@ export default function WalletSearchResultTable() {
     const fetchWalletScores = async () => {
       setLoading(true);
       try {
-        const res = await fetch(
-          `${API_BASE_URL}/backend/getAllWalletScores?page=${currentPage - 1}&pageSize=${itemsPerPage}`,
-          { credentials: "include" },
-        );
-        if (!res.ok) throw new Error("Failed to fetch wallet scores");
-        const json = await res.json();
-        const rows: TableRow[] = json.data.map((score: WalletScore) => ({
-          id: score.id,
-          walletAddress: score.walletAddress,
-          blockchain: detectBlockchain(score.walletAddress),
-          riskScore: score.riskScore,
-          riskLevel: score.riskLevel ?? "",
-          recommendedAction: score.recommendedAction,
-          timestamp: score.checkedAt,
-          confidence: score.decisionConfidence
-            ? score.decisionConfidence.charAt(0).toUpperCase() + score.decisionConfidence.slice(1)
-            : "",
-          ruleset: score.rulesetVersion ?? "",
-        }));
-        setTableData(rows);
-        setTotalItems(json.totalEntries);
-        setTotalPages(json.totalPages);
+        const serverPageSize = GET_ALL_WALLET_SCORES_MAX_ROWS_PER_RESPONSE;
+        const start = (currentPage - 1) * itemsPerPage;
+        const endExclusive = start + itemsPerPage;
+        const firstApiPage = Math.floor(start / serverPageSize);
+        const lastApiPage = Math.floor((endExclusive - 1) / serverPageSize);
+
+        const fetches = [];
+        for (let apiPage = firstApiPage; apiPage <= lastApiPage; apiPage++) {
+          fetches.push(
+            fetch(
+              `${API_BASE_URL}/backend/getAllWalletScores?page=${apiPage}&pageSize=${serverPageSize}`,
+              { credentials: "include" },
+            ).then((res) => {
+              if (!res.ok) throw new Error("Failed to fetch wallet scores");
+              return res.json() as Promise<{ data: WalletScore[]; totalEntries: number }>;
+            }),
+          );
+        }
+
+        const jsons = await Promise.all(fetches);
+        let totalEntries = 0;
+        const segments: TableRow[] = [];
+        for (const json of jsons) {
+          if (totalEntries === 0) totalEntries = json.totalEntries;
+          segments.push(...json.data.map(mapWalletScoreToRow));
+        }
+
+        const offset = start - firstApiPage * serverPageSize;
+        const pageSlice = segments.slice(offset, offset + itemsPerPage);
+        setTableData(pageSlice);
+        setTotalItems(totalEntries);
+        setTotalPages(Math.max(1, Math.ceil(totalEntries / itemsPerPage)));
       } catch (err) {
         console.error("Error fetching wallet scores:", err);
       } finally {
@@ -182,6 +262,8 @@ export default function WalletSearchResultTable() {
 
   const displayedData = sortRows(filteredData, sortColumn, sortCycle);
   const displayedCount = filteredData.length;
+
+  const csvData = React.useMemo(() => displayedData.map(rowToCsvRecord), [displayedData]);
 
   // Auto-dismiss copy notification after 3 seconds
   useEffect(() => {
@@ -315,32 +397,38 @@ export default function WalletSearchResultTable() {
                 />
               )}
             </div>
-            <button
-              type="button"
-              style={{
-                height: "48px",
-                padding: "0px 20px",
-                borderRadius: "4px",
-                border: "1px solid var(--blue)",
-                backgroundColor: "var(--very-dark-blue)",
-                color: "var(--blue)",
-                cursor: "pointer",
-                fontWeight: 500,
-                fontFamily: '"Hero New", sans-serif',
-                fontSize: "15px",
-                whiteSpace: "nowrap",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <img
-                src="/exportBlue.svg"
-                alt="Export"
-                style={{ width: "24px", height: "16px" }}
-              />
-              Export
-            </button>
+            {loading || displayedData.length === 0 ? (
+              <button
+                type="button"
+                disabled
+                style={{
+                  ...EXPORT_CONTROL_STYLE,
+                  cursor: "not-allowed",
+                  opacity: 0.5,
+                }}
+              >
+                <img
+                  src="/exportBlue.svg"
+                  alt="Export"
+                  style={{ width: "24px", height: "16px" }}
+                />
+                Export
+              </button>
+            ) : (
+              <CSVLink
+                data={csvData}
+                headers={[...CSV_HEADERS]}
+                filename="wallet-screenings.csv"
+                style={{ ...EXPORT_CONTROL_STYLE, textDecoration: "none", color: "var(--blue)" }}
+              >
+                <img
+                  src="/exportBlue.svg"
+                  alt="Export"
+                  style={{ width: "24px", height: "16px" }}
+                />
+                Export
+              </CSVLink>
+            )}
           </div>
         </div>
         <table
