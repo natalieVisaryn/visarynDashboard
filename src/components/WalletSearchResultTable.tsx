@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { CSVLink } from "react-csv";
 import { API_BASE_URL } from "../utils/auth";
+import { useUser } from "../context/userContext";
+import { formatRiskLevelLabel } from "./screeningUtils";
 
 interface WalletScore {
   id: string;
@@ -24,6 +26,8 @@ interface TableRow {
   timestamp: string;
   confidence: string;
   ruleset: string;
+  /** Organization name when using admin cross-org list; empty otherwise. */
+  screenedBy: string;
 }
 
 function detectBlockchain(address: string): "ETH" | "BTC" {
@@ -37,7 +41,15 @@ function detectBlockchain(address: string): "ETH" | "BTC" {
  */
 const GET_ALL_WALLET_SCORES_MAX_ROWS_PER_RESPONSE = 25;
 
-function mapWalletScoreToRow(score: WalletScore): TableRow {
+/** Admin endpoint allows up to 100 rows per request (server MAX_PAGE_SIZE). */
+const GET_ADMIN_WALLET_SCORES_MAX_ROWS_PER_RESPONSE = 100;
+
+/** #2cc740 at 0.5 opacity — bulk screening row highlight */
+const BULK_ROW_HIGHLIGHT = "rgba(44, 199, 64, 0.2)";
+/** Longer duration + ease-out so the green highlight eases out gradually */
+const BULK_HIGHLIGHT_FADE_MS = 1000;
+
+function mapWalletScoreToRow(score: WalletScore, screenedBy = ""): TableRow {
   return {
     id: score.id,
     walletAddress: score.walletAddress,
@@ -50,6 +62,7 @@ function mapWalletScoreToRow(score: WalletScore): TableRow {
       ? score.decisionConfidence.charAt(0).toUpperCase() + score.decisionConfidence.slice(1)
       : "",
     ruleset: score.rulesetVersion ?? "",
+    screenedBy,
   };
 }
 
@@ -66,7 +79,15 @@ function formatScreenedAt(timestamp: string): string {
   return `${month}/${day}/${year} at ${hours}:${minutes} ${ampm}`;
 }
 
-type SortColumn = "screenedAt" | "walletAddress" | "blockchain" | "riskScore" | "recommendedAction" | "confidence" | "ruleset";
+type SortColumn =
+  | "screenedAt"
+  | "walletAddress"
+  | "screenedBy"
+  | "blockchain"
+  | "riskScore"
+  | "recommendedAction"
+  | "confidence"
+  | "ruleset";
 type SortCycle = 1 | 2 | 3;
 
 const ACTION_ORDER: Record<string, number> = { Allow: 1, Review: 2, Escalate: 3 };
@@ -82,6 +103,9 @@ function sortRows(rows: TableRow[], column: SortColumn | null, cycle: SortCycle)
         break;
       case "walletAddress":
         cmp = a.walletAddress.localeCompare(b.walletAddress);
+        break;
+      case "screenedBy":
+        cmp = a.screenedBy.localeCompare(b.screenedBy);
         break;
       case "blockchain":
         cmp = a.blockchain.localeCompare(b.blockchain);
@@ -113,15 +137,10 @@ const CSV_HEADERS = [
   { label: "Ruleset", key: "ruleset" },
 ] as const;
 
-function formatRiskLevelForCsv(level: string): string {
-  if (!level) return "";
-  return level.charAt(0).toUpperCase() + level.slice(1).toLowerCase();
-}
-
-function rowToCsvRecord(row: TableRow): Record<string, string> {
-  const level = formatRiskLevelForCsv(row.riskLevel);
+function rowToCsvRecord(row: TableRow, includeScreenedBy: boolean): Record<string, string> {
+  const level = formatRiskLevelLabel(row.riskScore, row.riskLevel);
   const riskScoreText = level ? `${row.riskScore} ${level}` : String(row.riskScore);
-  return {
+  const base: Record<string, string> = {
     screenedAt: formatScreenedAt(row.timestamp),
     walletAddress: row.walletAddress,
     blockChain: row.blockchain,
@@ -130,6 +149,19 @@ function rowToCsvRecord(row: TableRow): Record<string, string> {
     confidence: row.confidence,
     ruleset: row.ruleset,
   };
+  if (includeScreenedBy) {
+    return {
+      screenedAt: base.screenedAt,
+      screenedBy: row.screenedBy,
+      walletAddress: base.walletAddress,
+      blockChain: base.blockChain,
+      riskScore: base.riskScore,
+      recommendedAction: base.recommendedAction,
+      confidence: base.confidence,
+      ruleset: base.ruleset,
+    };
+  }
+  return base;
 }
 
 const EXPORT_CONTROL_STYLE: React.CSSProperties = {
@@ -149,7 +181,24 @@ const EXPORT_CONTROL_STYLE: React.CSSProperties = {
   justifyContent: "center",
 };
 
-export default function WalletSearchResultTable() {
+type WalletSearchResultTableProps = {
+  adminView?: boolean;
+  /** Increment to refetch Recent Screenings (e.g. after bulk upload). */
+  refreshKey?: number;
+  /** Row `id`s from a successful bulk screen; cleared after highlight + fade. */
+  bulkHighlightIds?: string[];
+  onBulkHighlightConsumed?: () => void;
+};
+
+export default function WalletSearchResultTable({
+  adminView = false,
+  refreshKey = 0,
+  bulkHighlightIds = [],
+  onBulkHighlightConsumed,
+}: WalletSearchResultTableProps) {
+  const { isAdmin } = useUser();
+  /** Admin list API + org column: `/walletScreenings` or any admin on `/screenings`. */
+  const useAdminWalletScores = adminView || isAdmin;
   const navigate = useNavigate();
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
@@ -162,6 +211,28 @@ export default function WalletSearchResultTable() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortCycle, setSortCycle] = useState<SortCycle>(1);
   const [filterText, setFilterText] = useState("");
+  const [bulkHighlightFading, setBulkHighlightFading] = useState(false);
+
+  const bulkHighlightKey = bulkHighlightIds.length > 0 ? bulkHighlightIds.join("\0") : "";
+
+  const bulkHighlightSet = useMemo(() => new Set(bulkHighlightIds), [bulkHighlightIds]);
+
+  useEffect(() => {
+    if (!bulkHighlightKey) {
+      setBulkHighlightFading(false);
+      return undefined;
+    }
+    setBulkHighlightFading(false);
+    const fadeTimer = window.setTimeout(() => setBulkHighlightFading(true), 5000);
+    const doneTimer = window.setTimeout(() => {
+      onBulkHighlightConsumed?.();
+      setBulkHighlightFading(false);
+    }, 5000 + BULK_HIGHLIGHT_FADE_MS);
+    return () => {
+      window.clearTimeout(fadeTimer);
+      window.clearTimeout(doneTimer);
+    };
+  }, [bulkHighlightKey, onBulkHighlightConsumed]);
 
   const handleSortClick = (column: SortColumn) => {
     if (column !== sortColumn) {
@@ -187,7 +258,9 @@ export default function WalletSearchResultTable() {
     const fetchWalletScores = async () => {
       setLoading(true);
       try {
-        const serverPageSize = GET_ALL_WALLET_SCORES_MAX_ROWS_PER_RESPONSE;
+        const serverPageSize = useAdminWalletScores
+          ? GET_ADMIN_WALLET_SCORES_MAX_ROWS_PER_RESPONSE
+          : GET_ALL_WALLET_SCORES_MAX_ROWS_PER_RESPONSE;
         const start = (currentPage - 1) * itemsPerPage;
         const endExclusive = start + itemsPerPage;
         const firstApiPage = Math.floor(start / serverPageSize);
@@ -195,13 +268,16 @@ export default function WalletSearchResultTable() {
 
         const fetches = [];
         for (let apiPage = firstApiPage; apiPage <= lastApiPage; apiPage++) {
+          const url = useAdminWalletScores
+            ? `${API_BASE_URL}/backend/getAdminWalletScores?page=${apiPage}&pageSize=${serverPageSize}`
+            : `${API_BASE_URL}/backend/getAllWalletScores?page=${apiPage}&pageSize=${serverPageSize}`;
           fetches.push(
-            fetch(
-              `${API_BASE_URL}/backend/getAllWalletScores?page=${apiPage}&pageSize=${serverPageSize}`,
-              { credentials: "include" },
-            ).then((res) => {
+            fetch(url, { credentials: "include" }).then((res) => {
               if (!res.ok) throw new Error("Failed to fetch wallet scores");
-              return res.json() as Promise<{ data: WalletScore[]; totalEntries: number }>;
+              return res.json() as Promise<{
+                data: (WalletScore & { orgName?: string })[];
+                totalEntries: number;
+              }>;
             }),
           );
         }
@@ -211,7 +287,14 @@ export default function WalletSearchResultTable() {
         const segments: TableRow[] = [];
         for (const json of jsons) {
           if (totalEntries === 0) totalEntries = json.totalEntries;
-          segments.push(...json.data.map(mapWalletScoreToRow));
+          segments.push(
+            ...json.data.map((score) =>
+              mapWalletScoreToRow(
+                score,
+                useAdminWalletScores ? (score.orgName ?? "") : "",
+              ),
+            ),
+          );
         }
 
         const offset = start - firstApiPage * serverPageSize;
@@ -226,7 +309,7 @@ export default function WalletSearchResultTable() {
       }
     };
     fetchWalletScores();
-  }, [currentPage, itemsPerPage]);
+  }, [currentPage, itemsPerPage, useAdminWalletScores, refreshKey]);
 
   const filteredData = React.useMemo(() => {
     const query = filterText.trim().toLowerCase();
@@ -234,9 +317,10 @@ export default function WalletSearchResultTable() {
 
     const columnAccessors: ((row: TableRow) => string)[] = [
       (r) => formatScreenedAt(r.timestamp),
+      ...(useAdminWalletScores ? [(r: TableRow) => r.screenedBy] : []),
       (r) => r.walletAddress,
       (r) => r.blockchain,
-      (r) => `${r.riskScore} ${r.riskLevel}`,
+      (r) => `${r.riskScore} ${formatRiskLevelLabel(r.riskScore, r.riskLevel)}`,
       (r) => r.recommendedAction,
       (r) => r.confidence,
       (r) => r.ruleset,
@@ -258,12 +342,48 @@ export default function WalletSearchResultTable() {
 
     matchedRows.sort((a, b) => a.firstMatchCol - b.firstMatchCol);
     return matchedRows.map((m) => m.row);
-  }, [tableData, filterText]);
+  }, [tableData, filterText, useAdminWalletScores]);
 
   const displayedData = sortRows(filteredData, sortColumn, sortCycle);
   const displayedCount = filteredData.length;
 
-  const csvData = React.useMemo(() => displayedData.map(rowToCsvRecord), [displayedData]);
+  const csvExportHeaders = React.useMemo(() => {
+    if (!useAdminWalletScores) return [...CSV_HEADERS];
+    return [
+      CSV_HEADERS[0],
+      { label: "Screened By", key: "screenedBy" as const },
+      CSV_HEADERS[1],
+      ...CSV_HEADERS.slice(2),
+    ];
+  }, [useAdminWalletScores]);
+
+  const csvData = React.useMemo(
+    () => displayedData.map((row) => rowToCsvRecord(row, useAdminWalletScores)),
+    [displayedData, useAdminWalletScores],
+  );
+
+  const tableColumns = React.useMemo((): [string, SortColumn][] => {
+    const head: [string, SortColumn][] = useAdminWalletScores
+      ? [
+          ["Screened At", "screenedAt"],
+          ["Screened By", "screenedBy"],
+          ["Wallet Address", "walletAddress"],
+        ]
+      : [
+          ["Screened At", "screenedAt"],
+          ["Wallet Address", "walletAddress"],
+        ];
+    return [
+      ...head,
+      ["Block Chain", "blockchain"],
+      ["Risk Score", "riskScore"],
+      ["Recommended Action", "recommendedAction"],
+      ["Confidence", "confidence"],
+      ["Ruleset", "ruleset"],
+    ];
+  }, [useAdminWalletScores]);
+
+  const columnCount = useAdminWalletScores ? 8 : 7;
 
   // Auto-dismiss copy notification after 3 seconds
   useEffect(() => {
@@ -417,7 +537,7 @@ export default function WalletSearchResultTable() {
             ) : (
               <CSVLink
                 data={csvData}
-                headers={[...CSV_HEADERS]}
+                headers={[...csvExportHeaders]}
                 filename="wallet-screenings.csv"
                 style={{ ...EXPORT_CONTROL_STYLE, textDecoration: "none", color: "var(--blue)" }}
               >
@@ -434,7 +554,7 @@ export default function WalletSearchResultTable() {
         <table
           style={{
             width: "100%",
-            minWidth: "800px",
+            minWidth: useAdminWalletScores ? "920px" : "800px",
             borderCollapse: "collapse",
           }}
         >
@@ -444,15 +564,7 @@ export default function WalletSearchResultTable() {
                 borderBottom: "1px solid var(--input-field-blue)",
               }}
             >
-              {([
-                ["Screened At", "screenedAt"],
-                ["Wallet Address", "walletAddress"],
-                ["Block Chain", "blockchain"],
-                ["Risk Score", "riskScore"],
-                ["Recommended Action", "recommendedAction"],
-                ["Confidence", "confidence"],
-                ["Ruleset", "ruleset"],
-              ] as [string, SortColumn][]).map(([label, col]) => (
+              {tableColumns.map(([label, col]) => (
                 <th
                   key={col}
                   style={{
@@ -480,7 +592,7 @@ export default function WalletSearchResultTable() {
             {loading ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={columnCount}
                   style={{
                     padding: "3rem 1rem",
                     textAlign: "center",
@@ -495,7 +607,7 @@ export default function WalletSearchResultTable() {
             ) : displayedData.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={columnCount}
                   style={{
                     padding: "3rem 1rem",
                     textAlign: "center",
@@ -514,6 +626,17 @@ export default function WalletSearchResultTable() {
             ) : null}
             {displayedData.map((row, index) => {
               const isLastRow = index === displayedData.length - 1;
+              const isBulkRow = bulkHighlightSet.has(row.id);
+              let rowBackground: string;
+              if (isBulkRow && !bulkHighlightFading) {
+                rowBackground = BULK_ROW_HIGHLIGHT;
+              } else if (isBulkRow && bulkHighlightFading) {
+                rowBackground = "transparent";
+              } else if (hoveredRow === index) {
+                rowBackground = "var(--input-field-blue)";
+              } else {
+                rowBackground = "transparent";
+              }
               return (
                 <tr
                   key={row.id}
@@ -525,11 +648,10 @@ export default function WalletSearchResultTable() {
                       ? "none"
                       : "1px solid var(--input-field-blue)",
                     cursor: "pointer",
-                    backgroundColor:
-                      hoveredRow === index
-                        ? "var(--input-field-blue)"
-                        : "transparent",
-                    transition: "background-color 0.15s ease",
+                    backgroundColor: rowBackground,
+                    transition: isBulkRow
+                      ? `background-color ${BULK_HIGHLIGHT_FADE_MS}ms ease-out`
+                      : "background-color 0.15s ease",
                   }}
                 >
                   <td
@@ -545,6 +667,21 @@ export default function WalletSearchResultTable() {
                   >
                     {formatScreenedAt(row.timestamp)}
                   </td>
+                  {useAdminWalletScores && (
+                    <td
+                      style={{
+                        padding: "1rem",
+                        verticalAlign: "middle",
+                        fontFamily: '"Hero New", sans-serif',
+                        fontSize: "13px",
+                        fontWeight: 400,
+                        color: "var(--text-grey-white)",
+                        maxWidth: "200px",
+                      }}
+                    >
+                      {row.screenedBy}
+                    </td>
+                  )}
                   <td
                     style={{
                       padding: "1rem",
@@ -642,7 +779,7 @@ export default function WalletSearchResultTable() {
                         alt={`Risk Score ${row.riskScore}`}
                         style={{ width: "54px", height: "40px", display: "block" }}
                       />
-                      <span>{row.riskLevel.charAt(0).toUpperCase() + row.riskLevel.slice(1).toLowerCase()}</span>
+                      <span>{formatRiskLevelLabel(row.riskScore, row.riskLevel)}</span>
                     </div>
                   </td>
                   <td

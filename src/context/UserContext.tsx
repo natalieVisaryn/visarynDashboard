@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../utils/auth";
-import { UserContext } from "./userContext";
+import { UserContext, normalizeUserAccountType } from "./userContext";
 import type { User } from "./userContext";
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
@@ -16,7 +16,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data);
+        const accountType = normalizeUserAccountType(data.accountType);
+        setUser(
+          accountType
+            ? { ...data, accountType }
+            : (data as User),
+        );
       } else {
         setUser(null);
       }

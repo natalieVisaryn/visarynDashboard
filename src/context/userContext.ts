@@ -1,5 +1,15 @@
 import { createContext, useContext } from "react";
 
+/** Normalize whoami `accountType` so role checks and menu logic stay stable across API casing. */
+export function normalizeUserAccountType(
+  accountType: unknown,
+): "ADMIN" | "USER" | undefined {
+  if (typeof accountType !== "string") return undefined;
+  const t = accountType.trim().toUpperCase();
+  if (t === "ADMIN" || t === "USER") return t;
+  return undefined;
+}
+
 export interface User {
   id: string;
   name: string;

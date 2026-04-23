@@ -2,6 +2,8 @@ export type WalletScoreDetail = {
   id: string;
   checkedAt: string;
   walletAddress: string;
+  /** Present on detail responses for admin (organization that performed the screening). */
+  orgName?: string;
   chain: "ETH" | "BTC";
   riskScore: number;
   riskLevel: string;
@@ -17,6 +19,7 @@ export type WalletScoreDetail = {
 };
 
 export const riskScoreColors: Record<number, string> = {
+  0: "#1F4B1B",
   1: "#214B1B",
   2: "#3E4D17",
   3: "#5D4F13",
@@ -47,6 +50,12 @@ export function formatTitle(value: string): string {
     .join(" ");
 }
 
+/** Risk level shown beside score graphics: 0/10 always displays as Low. */
+export function formatRiskLevelLabel(riskScore: number, riskLevel: string): string {
+  if (riskScore === 0) return formatTitle("low");
+  return formatTitle(riskLevel);
+}
+
 /** Substrings / prefixes matched against `riskFactors` entries for Decision Rationale rows. */
 export const DECISION_RATIONALE_FACTORS = {
   SANCTIONS_DIRECT: "Direct match on sanctions list (OFAC/EU/UK)",
@@ -65,8 +74,8 @@ export type RationaleStatusIcon = "green" | "orange" | "redHex";
 
 export type DecisionRationaleRow = {
   label: string;
-  value: "Yes" | "No";
-  icon: RationaleStatusIcon;
+  value: "Yes" | "No" | "n/a";
+  icon: RationaleStatusIcon | null;
 };
 
 export type DecisionRationaleSection = {
@@ -80,6 +89,42 @@ function riskFactorIncludes(factors: string[], needle: string): boolean {
 
 function hasSystemBlacklistMatch(factors: string[]): boolean {
   return factors.some((f) => f.startsWith(DECISION_RATIONALE_FACTORS.SYSTEM_BLACKLIST_PREFIX));
+}
+
+/**
+ * Decision basis for UI: evaluate in order; first match wins.
+ * Falls back to "N/A" if confidence is neither HIGH nor LOW after prior rules.
+ */
+export function getComputedDecisionBasis(
+  riskFactors: string[],
+  decisionConfidence: string,
+): string {
+  const f = riskFactors;
+  if (
+    riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.SANCTIONS_DIRECT) ||
+    riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.ENFORCEMENT_DIRECT)
+  ) {
+    return "Regulator-Critical";
+  }
+  if (
+    riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.REGULATOR_TX_30D) ||
+    riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.BLACKLIST_TX_30D)
+  ) {
+    return "Exposure-Based Risk";
+  }
+  if (hasSystemBlacklistMatch(f)) {
+    return "Known Risk Intelligence";
+  }
+  if (
+    riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.WALLET_FIRST_SEEN_2D) ||
+    riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.WALLET_FIRST_SEEN_7D)
+  ) {
+    return "Behavioral / Heuristic Signals";
+  }
+  const conf = decisionConfidence.trim().toUpperCase();
+  if (conf === "HIGH") return "Low Risk";
+  if (conf === "LOW") return "Data Limitations";
+  return "N/A";
 }
 
 /** Two-column Decision Rationale data: left then right column sections. */
@@ -169,13 +214,13 @@ export function getDecisionRationaleLayout(riskFactors: string[]): {
       rows: [
         {
           label: "Primarily funded by exchange (90 days)",
-          value: cexPrimaryHit ? "Yes" : "No",
-          icon: cexPrimaryHit ? "green" : "orange",
+          value: cexPrimaryHit ? "Yes" : "n/a",
+          icon: cexPrimaryHit ? "green" : null,
         },
         {
           label: "Initially funded by known exchange",
-          value: cexInitialHit ? "Yes" : "No",
-          icon: cexInitialHit ? "green" : "orange",
+          value: cexInitialHit ? "Yes" : "n/a",
+          icon: cexInitialHit ? "green" : null,
         },
       ],
     },

@@ -1,41 +1,74 @@
+import { useEffect, useState } from "react";
+import { API_BASE_URL } from "../utils/auth";
 import PageHeader from "./PageHeader";
 import PageLayout from "./PageLayout";
 import Statistic from "./Statistic";
 
-const FAKE_DATA = {
-  riskActivity: {
-    apiRequests: 409643,
-    avgLatency: 244,
-    activeCustomers: 5,
-    highRiskWallets: 2,
-  },
+/** Response from GET /backend/getAdminDashboard */
+interface AdminDashboardData {
+  month: { start: string; end: string };
+  api: {
+    totalRequests: number;
+    avgLatencyMs: number;
+    successRate: number;
+  };
+  organizationCount: number;
+  activeOrganizationCount: number;
+  walletScoresRiskGte7ThisMonth: number;
+  topOrgsByRequests: {
+    orgName: string;
+    totalRequests: number;
+    avgLatencyMs: number;
+  }[];
+}
+
+const FAKE_BLACKLIST_AND_PIPELINE = {
   blacklistIngestion: [
     { source: "OFAC (US)", added: 3, updated: 8, status: "success" as const },
     { source: "EU Sanctions", added: 3, updated: 8, status: "success" as const },
     { source: "U.K. HMT Financial Sanctions", added: 3, updated: 8, status: "success" as const },
     { source: "DOJ Cryptocurrency Enforcement Actions", added: 0, updated: 0, status: "failed" as const },
   ],
-  topCustomers: [
-    { name: "Binance", avgLatency: 245, requests: 145789 },
-    { name: "Coinbase", avgLatency: 245, requests: 98432 },
-    { name: "Kraken", avgLatency: 245, requests: 67891 },
-    { name: "Gemini", avgLatency: 245, requests: 54321 },
-    { name: "BitGo", avgLatency: 245, requests: 43210 },
-  ],
-  systemHealth: {
-    ingestionSuccessful: 3,
-    ingestionFailed: 1,
-    apiSuccessRate: 99.2,
-    avgResponseTime: 244,
-  },
-  dateRange: "March 1 to March 31",
-  lastUpdated: "Feb 26, 2026 - 03:14 UTC",
 };
+
+/** Placeholder until ingestion metrics are wired to the API */
+const INGESTION_SUCCESSFUL = 4;
+const INGESTION_FAILED = 1;
+
+function formatApiMonthRange(startIso: string, endIso: string): string {
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  const month = start.toLocaleString("default", { month: "long" });
+  const year = start.getFullYear();
+  return `${month} ${start.getDate()} to ${month} ${end.getDate()}, ${year}`;
+}
+
+function formatLastUpdatedAt(): string {
+  return new Date().toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  });
+}
+
+const pageHorizontalPadding = "60px";
 
 const cardStyle: React.CSSProperties = {
   backgroundColor: "var(--dark-blue)",
   borderRadius: "12px",
   padding: "24px",
+  width: "100%",
+  maxWidth: "100%",
+  boxSizing: "border-box",
+};
+
+const twoColumnCardStyle: React.CSSProperties = {
+  ...cardStyle,
+  minWidth: 0,
 };
 
 const cardHeaderStyle: React.CSSProperties = {
@@ -104,7 +137,28 @@ function RankCircle({ rank }: { rank: number }) {
 }
 
 export default function AdminDashboard() {
-  const d = FAKE_DATA;
+  const [data, setData] = useState<AdminDashboardData | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
+
+  const d = FAKE_BLACKLIST_AND_PIPELINE;
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/backend/getAdminDashboard`, { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch admin dashboard data");
+        return res.json();
+      })
+      .then((json: AdminDashboardData) => {
+        setData(json);
+        setLastUpdated(formatLastUpdatedAt());
+      })
+      .catch((err) => console.error(err));
+  }, []);
+
+  const dateRangeLabel =
+    data != null ? formatApiMonthRange(data.month.start, data.month.end) : "--";
+
+  const api = data?.api;
 
   return (
     <>
@@ -117,14 +171,17 @@ export default function AdminDashboard() {
         <PageHeader pageTitle="Admin Dashboard" />
         <div
           style={{
+            boxSizing: "border-box",
+            width: "100%",
+            maxWidth: "100%",
             paddingTop: "28px",
-            paddingRight: "64px",
-            paddingBottom: "26px",
-            paddingLeft: "64px",
+            paddingRight: pageHorizontalPadding,
+            paddingBottom: "6px",
+            paddingLeft: pageHorizontalPadding,
           }}
         >
           {/* Risk Activity */}
-          <div style={{ ...cardStyle, width: "1072px", marginBottom: "24px" }}>
+          <div style={{ ...cardStyle, marginBottom: "24px" }}>
             <div
               style={{
                 display: "flex",
@@ -134,28 +191,35 @@ export default function AdminDashboard() {
               }}
             >
               <div style={cardHeaderStyle}>Risk Activity</div>
-              <div style={dateRangeStyle}>{d.dateRange}</div>
+              <div style={dateRangeStyle}>{dateRangeLabel}</div>
             </div>
-            <div style={{ display: "flex", flexDirection: "row", gap: "80px" }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: "80px",
+              }}
+            >
               <Statistic
                 icon="/trendlineUp.svg"
-                title="API Requests"
-                value={d.riskActivity.apiRequests.toLocaleString()}
+                title="Customer API Requests"
+                value={api != null ? api.totalRequests.toLocaleString() : "--"}
               />
               <Statistic
                 icon="/clock.svg"
                 title="Average Latency"
-                value={`${d.riskActivity.avgLatency}ms`}
+                value={api != null ? `${Math.round(api.avgLatencyMs)}ms` : "--"}
               />
               <Statistic
                 icon="/peopleBlue.svg"
                 title="Active Customers"
-                value={String(d.riskActivity.activeCustomers)}
+                value={data != null ? String(data.activeOrganizationCount) : "--"}
               />
               <Statistic
                 icon="/warningBlue.svg"
                 title="High Risk Wallets"
-                value={String(d.riskActivity.highRiskWallets)}
+                value={data != null ? String(data.walletScoresRiskGte7ThisMonth) : "--"}
               />
             </div>
           </div>
@@ -166,11 +230,13 @@ export default function AdminDashboard() {
               display: "flex",
               gap: "24px",
               marginBottom: "24px",
-              width: "1072px",
+              width: "100%",
+              maxWidth: "100%",
+              boxSizing: "border-box",
             }}
           >
             {/* Blacklist Ingestion Status */}
-            <div style={{ ...cardStyle, flex: 1 }}>
+            <div style={{ ...twoColumnCardStyle, flex: 1 }}>
               <div style={{ ...cardHeaderStyle, marginBottom: "24px" }}>
                 Blacklist Ingestion Status
               </div>
@@ -229,7 +295,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Top 5 Customers by API Usage */}
-            <div style={{ ...cardStyle, flex: 1 }}>
+            <div style={{ ...twoColumnCardStyle, flex: 1 }}>
               <div style={{ ...cardHeaderStyle, marginBottom: "24px" }}>
                 Top 5 Customers by API Usage
               </div>
@@ -245,7 +311,7 @@ export default function AdminDashboard() {
                 }}
               >
                 <span style={{ color: "var(--text-grey-white)", fontSize: "13px", fontWeight: 700 }}>
-                Customer
+                  Customer
                 </span>
                 <span style={{ color: "var(--text-grey-white)", fontSize: "13px", fontWeight: 700 }}>
                   Requests
@@ -253,18 +319,15 @@ export default function AdminDashboard() {
               </div>
 
               {/* Customer Rows */}
-              {d.topCustomers.map((customer, i) => (
+              {(data?.topOrgsByRequests ?? []).map((org, i, arr) => (
                 <div
-                  key={i}
+                  key={`${org.orgName}-${i}`}
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
                     padding: "10px 0",
-                    borderBottom:
-                      i < d.topCustomers.length - 1
-                        ? "1px solid var(--input-field-blue)"
-                        : "none",
+                    borderBottom: i < arr.length - 1 ? "1px solid var(--input-field-blue)" : "none",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
@@ -278,10 +341,10 @@ export default function AdminDashboard() {
                           marginBottom: "2px",
                         }}
                       >
-                        {customer.name}
+                        {org.orgName}
                       </div>
                       <div style={{ color: "var(--textGrey)", fontSize: "13px" }}>
-                        Avg: {customer.avgLatency}ms
+                        Avg: {Math.round(org.avgLatencyMs)}ms
                       </div>
                     </div>
                   </div>
@@ -292,7 +355,7 @@ export default function AdminDashboard() {
                       fontWeight: 500,
                     }}
                   >
-                    {customer.requests.toLocaleString()}
+                    {org.totalRequests.toLocaleString()}
                   </div>
                 </div>
               ))}
@@ -300,53 +363,92 @@ export default function AdminDashboard() {
           </div>
 
           {/* System Health */}
-          <div style={{ ...cardStyle, width: "1072px", marginBottom: "24px" }}>
+          <div style={{ ...cardStyle, marginBottom: "24px" }}>
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                marginBottom: "20px",
+                marginBottom: "24px",
               }}
             >
               <div style={cardHeaderStyle}>System Health</div>
-              <div style={dateRangeStyle}>{d.dateRange}</div>
+              <div style={dateRangeStyle}>{dateRangeLabel}</div>
             </div>
-            <div style={{ display: "flex", flexDirection: "row", gap: "50px" }}>
-              <Statistic
-                icon="/pipelineBlue.svg"
-                title="Ingestion Pipeline"
-                value={
-                  <>
-                    <span style={{ fontSize: "24px", fontWeight: 700 }}>
-                      {d.systemHealth.ingestionSuccessful}
-                    </span>{" "}
-                    <span style={{ fontSize: "14px", color: "var(--textGrey)" }}>successful</span>
-                    {"   "}
-                    <span style={{ fontSize: "24px", fontWeight: 700 }}>
-                      {d.systemHealth.ingestionFailed}
-                    </span>{" "}
-                    <span style={{ fontSize: "14px", color: "var(--textGrey)" }}>failed</span>
-                  </>
-                }
-              />
-              <Statistic
-                icon="/trendlineUp.svg"
-                title="API Success Rate"
-                value={`${d.systemHealth.apiSuccessRate}%`}
-              />
-              <Statistic
-                icon="/clock.svg"
-                title="Avg. Response Time"
-                value={
-                  <>
-                    {d.systemHealth.avgResponseTime}ms{" "}
-                    <span style={{ fontSize: "14px", color: "var(--textGrey)" }}>
-                      (Target &lt; 1000ms)
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                flexWrap: "wrap",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: "32px 48px",
+              }}
+            >
+              {[
+                {
+                  icon: "/greenCircleWithCheck.svg",
+                  label: "Successful Ingestion",
+                  value: String(INGESTION_SUCCESSFUL),
+                },
+                {
+                  icon: "/redCircleWithX.svg",
+                  label: "Failed Ingestion",
+                  value: String(INGESTION_FAILED),
+                },
+                {
+                  icon: "/trendlineUp.svg",
+                  label: "API Success Rate",
+                  value: api != null ? `${(api.successRate * 100).toFixed(1)}%` : "--",
+                },
+              ].map((col) => (
+                <div
+                  key={col.label}
+                  style={{
+                    flex: "1 1 180px",
+                    minWidth: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px",
+                    }}
+                  >
+                    <img
+                      src={col.icon}
+                      alt=""
+                      style={{ width: "22px", height: "22px", flexShrink: 0 }}
+                    />
+                    <span
+                      style={{
+                        color: "var(--textWhite)",
+                        fontFamily: '"Hero New", sans-serif',
+                        fontSize: "15px",
+                        fontWeight: 500,
+                        lineHeight: "120%",
+                      }}
+                    >
+                      {col.label}
                     </span>
-                  </>
-                }
-              />
+                  </div>
+                  <div
+                    style={{
+                      color: "var(--textWhite)",
+                      fontFamily: '"Hero New", sans-serif',
+                      fontSize: "28px",
+                      fontWeight: 700,
+                      lineHeight: "110%",
+                    }}
+                  >
+                    {col.value}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -354,16 +456,17 @@ export default function AdminDashboard() {
         {/* Footer info */}
         <div
           style={{
-            paddingLeft: "64px",
-            paddingRight: "64px",
+            boxSizing: "border-box",
+            width: "100%",
+            maxWidth: "100%",
+            paddingLeft: pageHorizontalPadding,
+            paddingRight: pageHorizontalPadding,
             paddingBottom: "48px",
           }}
         >
-          <div style={{ color: "var(--textGrey)", fontSize: "13px", marginBottom: "8px" }}>
-            {d.dateRange}
-          </div>
+
           <div style={{ color: "var(--textGrey)", fontSize: "13px" }}>
-            Data Last Updated: {d.lastUpdated}
+            Data Last Updated: {lastUpdated || "--"}
           </div>
         </div>
       </PageLayout>

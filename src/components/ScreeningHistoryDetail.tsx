@@ -5,8 +5,11 @@ import {
   type WalletScoreDetail,
   riskScoreColors,
   formatDate,
+  formatRiskLevelLabel,
   formatTitle,
+  getComputedDecisionBasis,
 } from "./screeningUtils";
+import { useUser } from "../context/userContext";
 
 interface Props {
   screeningId: string;
@@ -14,19 +17,23 @@ interface Props {
 }
 
 export default function ScreeningHistoryDetail({ screeningId, onBack }: Props) {
+  const { isAdmin, isLoading: userAuthLoading } = useUser();
   const [entry, setEntry] = useState<WalletScoreDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showLoader, setShowLoader] = useState(false);
 
   const fetchEntry = useCallback(async () => {
+    if (userAuthLoading) return;
+    const detailPath = isAdmin
+      ? `/backend/getAdminWalletScoreDetails/${screeningId}`
+      : `/backend/getWalletScoreDetails/${screeningId}`;
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(
-        `${API_BASE_URL}/backend/getWalletScoreDetails/${screeningId}`,
-        { credentials: "include" },
-      );
+      const res = await fetch(`${API_BASE_URL}${detailPath}`, {
+        credentials: "include",
+      });
       if (!res.ok) {
         if (res.status === 404) throw new Error("Screening not found");
         throw new Error("Failed to fetch screening details");
@@ -38,7 +45,7 @@ export default function ScreeningHistoryDetail({ screeningId, onBack }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [screeningId]);
+  }, [screeningId, isAdmin, userAuthLoading]);
 
   useEffect(() => {
     fetchEntry();
@@ -100,6 +107,23 @@ export default function ScreeningHistoryDetail({ screeningId, onBack }: Props) {
         {formatDate(entry.checkedAt)}
       </div>
 
+      {isAdmin && (
+        <div style={{ paddingBottom: "20px" }}>
+          <div
+            style={{
+              fontSize: "12px",
+              color: "var(--textGrey)",
+              marginBottom: "6px",
+            }}
+          >
+            Screened by
+          </div>
+          <span style={{ fontSize: "13px", fontWeight: 300, color: "var(--textWhite)"}}>
+            {entry.orgName ?? "—"}
+          </span>
+        </div>
+      )}
+
       <div
         style={{
           display: "flex",
@@ -125,7 +149,7 @@ export default function ScreeningHistoryDetail({ screeningId, onBack }: Props) {
         />
         <div style={{ flex: "1 1 auto", minWidth: "180px" }}>
           <div style={{ fontWeight: 700, fontSize: "16px", color: "var(--textWhite)", marginBottom: "4px" }}>
-            {formatTitle(entry.riskLevel)} Risk detected
+            {formatRiskLevelLabel(entry.riskScore, entry.riskLevel)} Risk detected
           </div>
           <div style={{ fontSize: "13px", color: "var(--text-grey-white)" }}>
             Recommendation: {entry.recommendedAction}
@@ -142,7 +166,7 @@ export default function ScreeningHistoryDetail({ screeningId, onBack }: Props) {
           </div>
           <div>
             <div style={{ fontSize: "14px", fontWeight: 400, opacity: 0.7, color: "var(--text-grey-white)", marginBottom: "7px" }}>Decision Basis:</div>
-            <div style={{ fontSize: "14px", fontWeight: 400, color: "var(--text-grey-white)" }}>{entry.decisionBasis || "N/A"}</div>
+            <div style={{ fontSize: "14px", fontWeight: 400, color: "var(--text-grey-white)" }}>{getComputedDecisionBasis(entry.riskFactors, entry.decisionConfidence)}</div>
           </div>
           <div>
             <div style={{ fontSize: "14px", fontWeight: 400, opacity: 0.7, color: "var(--text-grey-white)", marginBottom: "7px" }}>Ruleset:</div>

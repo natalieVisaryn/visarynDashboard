@@ -74,7 +74,7 @@ function RationaleColumn({ sections }: { sections: DecisionRationaleSection[] })
                 }}
               >
                 {row.value}
-                <RationaleStatusIcon icon={row.icon} />
+                {row.icon !== null ? <RationaleStatusIcon icon={row.icon} /> : null}
               </div>
             </div>
           ))}

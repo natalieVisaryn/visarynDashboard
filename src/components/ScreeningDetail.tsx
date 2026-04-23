@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AddEditOrgBlacklist from "./AddEditOrgBlacklist";
+import BulkWalletScreeningModal from "./BulkWalletScreeningModal";
 import PageHeader from "./PageHeader";
 import PageLayout from "./PageLayout";
 import ScreeningHistoryDetail from "./ScreeningHistoryDetail";
@@ -12,8 +13,11 @@ import {
   type WalletScoreDetail,
   riskScoreColors,
   formatDate,
+  formatRiskLevelLabel,
   formatTitle,
+  getComputedDecisionBasis,
 } from "./screeningUtils";
+import { useUser } from "../context/userContext";
 import {
   type WalletScreenBannerState,
   validateWalletInputForScreen,
@@ -97,7 +101,7 @@ function filterHistory(
     const fields = [
       formatDate(row.checkedAt),
       String(row.riskScore),
-      formatTitle(row.riskLevel),
+      formatRiskLevelLabel(row.riskScore, row.riskLevel),
       row.recommendedAction,
       formatTitle(row.decisionConfidence),
       row.rulesetVersion,
@@ -109,12 +113,15 @@ function filterHistory(
 export default function ScreeningDetail() {
   const { screeningId } = useParams<{ screeningId: string }>();
   const navigate = useNavigate();
+  const { isAdmin, isLoading: userAuthLoading } = useUser();
 
   const [entry, setEntry] = useState<WalletScoreDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCopyNotification, setShowCopyNotification] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkWalletModal, setShowBulkWalletModal] = useState(false);
+  const [bulkModalKey, setBulkModalKey] = useState(0);
   const [activeTab, setActiveTab] = useState<"rationale" | "history">("rationale");
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const tabContentRef = useRef<HTMLDivElement>(null);
@@ -133,11 +140,19 @@ export default function ScreeningDetail() {
   const [historySortCycle, setHistorySortCycle] = useState<SortCycle>(2);
 
   const fetchEntry = useCallback(async () => {
-    if (!screeningId) return;
+    if (!screeningId) {
+      setLoading(false);
+      setError("Missing screening id");
+      return;
+    }
+    if (userAuthLoading) return;
+    const detailPath = isAdmin
+      ? `/backend/getAdminWalletScoreDetails/${screeningId}`
+      : `/backend/getWalletScoreDetails/${screeningId}`;
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${API_BASE_URL}/backend/getWalletScoreDetails/${screeningId}`, {
+      const res = await fetch(`${API_BASE_URL}${detailPath}`, {
         credentials: "include",
       });
       if (!res.ok) {
@@ -151,7 +166,7 @@ export default function ScreeningDetail() {
     } finally {
       setLoading(false);
     }
-  }, [screeningId]);
+  }, [screeningId, isAdmin, userAuthLoading]);
 
   useEffect(() => {
     fetchEntry();
@@ -290,7 +305,14 @@ export default function ScreeningDetail() {
           <div style={{ backgroundColor: "var(--dark-blue)", borderRadius: "4px", padding: "25px 20px", marginBottom: "20px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "25px", alignItems: "center" }}>
               <div style={{ fontWeight: 700, fontSize: "18px", color: "var(--textWhite)" }}>Screen Wallet Address</div>
-              <button type="button" style={{ display: "flex", alignItems: "center", gap: "8px", height: "44px", borderRadius: "4px", border: "none", backgroundColor: "var(--input-field-blue)", color: "var(--blue)", padding: "0 16px", cursor: "pointer", fontSize: "15px" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkModalKey((k) => k + 1);
+                  setShowBulkWalletModal(true);
+                }}
+                style={{ display: "flex", alignItems: "center", gap: "8px", height: "44px", borderRadius: "4px", border: "none", backgroundColor: "var(--input-field-blue)", color: "var(--blue)", padding: "0 16px", cursor: "pointer", fontSize: "15px" }}
+              >
                 <img src="/uploadFile.svg" alt="" style={{ width: 14, height: 14 }} />
                 Bulk Wallet Screening
               </button>
@@ -440,13 +462,32 @@ export default function ScreeningDetail() {
                         <span style={{ fontSize: "13px", fontWeight: 300, color: "var(--textWhite)" }}>{entry.walletAddress}</span>
                         <img src="/copyBlye.svg" alt="Copy" role="button" onClick={handleCopy} style={{ width: "14px", height: "14px", cursor: "pointer" }} />
                       </div>
+                      {isAdmin && (
+                        <>
+                          <div
+                            style={{
+                              fontSize: "12px",
+                              color: "var(--textGrey)",
+                              marginBottom: "6px",
+                              marginTop: "12px",
+                            }}
+                          >
+                            Screened by
+                          </div>
+                          <span style={{ fontSize: "13px", fontWeight: 300, color: "var(--textWhite)" }}>
+                            {entry.orgName ?? "—"}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  <button onClick={() => setShowAddModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "var(--input-field-blue)", border: "none", borderRadius: "4px", padding: "16px 26px", color: "var(--blue)", fontSize: "15px", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}>
-                    <img src="/noSymbolBlue.svg" alt="" style={{ width: "24px", height: "16px" }} />
-                    Add to Blacklist
-                  </button>
+                  {entry.blacklist.length === 0 && (
+                    <button onClick={() => setShowAddModal(true)} style={{ display: "flex", alignItems: "center", gap: "8px", backgroundColor: "var(--input-field-blue)", border: "none", borderRadius: "4px", padding: "16px 26px", color: "var(--blue)", fontSize: "15px", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}>
+                      <img src="/noSymbolBlue.svg" alt="" style={{ width: "24px", height: "16px" }} />
+                      Add to Blacklist
+                    </button>
+                  )}
                 </div>
 
                 <div
@@ -470,7 +511,7 @@ export default function ScreeningDetail() {
                   <img src={`/${entry.riskScore}score.svg`} alt={`Risk Score ${entry.riskScore}`} style={{ width: "80px", height: "60px", flexShrink: 0 }} />
                   <div style={{ flex: "1 1 auto", minWidth: "180px" }}>
                     <div style={{ fontWeight: 700, fontSize: "16px", color: "var(--textWhite)", marginBottom: "4px" }}>
-                      {formatTitle(entry.riskLevel)} Risk detected
+                      {formatRiskLevelLabel(entry.riskScore, entry.riskLevel)} Risk detected
                     </div>
                     <div style={{ fontSize: "13px", color: "var(--text-grey-white)" }}>
                       Recommendation: {entry.recommendedAction}
@@ -487,7 +528,7 @@ export default function ScreeningDetail() {
                     </div>
                     <div>
                     <div style={{ fontSize: "14px", fontWeight: 400, opacity: 0.7, color: "var(--text-grey-white)", marginBottom: "7px" }}>Decision Basis:</div>
-                    <div style={{ fontSize: "14px",fontWeight: 400, color: "var(--text-grey-white)" }}>{entry.decisionBasis || "N/A"}</div>
+                    <div style={{ fontSize: "14px",fontWeight: 400, color: "var(--text-grey-white)" }}>{getComputedDecisionBasis(entry.riskFactors, entry.decisionConfidence)}</div>
                     </div>
                     <div>
                     <div style={{ fontSize: "14px", fontWeight: 400, opacity: 0.7, color: "var(--text-grey-white)", marginBottom: "7px" }}>Ruleset:</div>
@@ -685,7 +726,7 @@ export default function ScreeningDetail() {
                                       alt={`Score ${row.riskScore}`}
                                       style={{ width: "40px", height: "40px", display: "block" }}
                                     />
-                                    <span>{formatTitle(row.riskLevel)}</span>
+                                    <span>{formatRiskLevelLabel(row.riskScore, row.riskLevel)}</span>
                                   </div>
                                 </td>
                                 <td style={historyTdStyle}>
@@ -796,6 +837,13 @@ export default function ScreeningDetail() {
         onSuccess={() => setShowAddModal(false)}
         initialAddress={entry?.walletAddress ?? ""}
         initialChain={entry?.chain ?? "ETH"}
+      />
+
+      <BulkWalletScreeningModal
+        key={bulkModalKey}
+        isOpen={showBulkWalletModal}
+        onClose={() => setShowBulkWalletModal(false)}
+        onBulkFlowComplete={() => navigate("/walletScreenings")}
       />
 
       {showCopyNotification && (

@@ -12,16 +12,19 @@ export default function MenuBarOpen({ onIconClick }: MenuBarOpenProps) {
   const { isAdmin } = useUser();
 
   const isDashboard = location.pathname === "/dashboard" || location.pathname === "/";
-  const isWalletSearch = location.pathname === "/screenings";
+  const isWalletSearch =
+    location.pathname === "/screenings" || location.pathname.startsWith("/screenings/");
   const isBlacklist = location.pathname === "/blacklist";
   const isApiKeys = location.pathname === "/apiKeys";
 
   const isAdminOverview = location.pathname === "/admin";
-  const isAdminScreenings = location.pathname === "/admin/screenings";
-  const isAdminBlacklist = location.pathname === "/admin/blacklist";
-  const isAdminApiUsage = location.pathname === "/admin/api-usage";
-  const isAdminIngestion = location.pathname === "/admin/ingestion";
-  const isAdminRule = location.pathname === "/admin/rule";
+  /** Admin list lives at `/walletScreenings`; admins can also use org `/screenings` + detail under `/screenings/:id`. */
+  const isAdminScreenings =
+    location.pathname === "/walletScreenings" || isWalletSearch;
+  const isAdminBlacklist = location.pathname === "/adminBlacklist";
+  const isAdminApiUsage = location.pathname === "/adminApiUsage";
+  const isAdminIngestion = location.pathname === "/adminIngestion";
+  const isAdminRules = location.pathname === "/adminrules";
 
   return (
     <div className="menuBarOpenContainer menuBarCommon">
@@ -137,7 +140,7 @@ export default function MenuBarOpen({ onIconClick }: MenuBarOpenProps) {
           >
             <div className="menuItemIconContainer">
               <img
-                src={isAdminOverview ? "/upBarChartBlue.svg" : "/upBarChartGrey.svg"}
+                src={isAdminOverview ? "/glassWithStatsBlue.svg" : "/glassWithStatsGrey.svg"}
                 alt="Overview Icon"
                 width={24}
                 height={18}
@@ -153,7 +156,7 @@ export default function MenuBarOpen({ onIconClick }: MenuBarOpenProps) {
           </div>
           <div
             className="adminMenuItemOpen"
-            onClick={() => navigate("/admin/screenings")}
+            onClick={() => navigate("/walletScreenings")}
             style={{ cursor: "pointer" }}
           >
             <div className="menuItemIconContainer">
@@ -174,7 +177,7 @@ export default function MenuBarOpen({ onIconClick }: MenuBarOpenProps) {
           </div>
           <div
             className="adminMenuItemOpen"
-            onClick={() => navigate("/admin/blacklist")}
+            onClick={() => navigate("/adminBlacklist")}
             style={{ cursor: "pointer" }}
           >
             <div className="menuItemIconContainer">
@@ -195,7 +198,7 @@ export default function MenuBarOpen({ onIconClick }: MenuBarOpenProps) {
           </div>
           <div
             className="adminMenuItemOpen"
-            onClick={() => navigate("/admin/api-usage")}
+            onClick={() => navigate("/adminApiUsage")}
             style={{ cursor: "pointer" }}
           >
             <div className="menuItemIconContainer">
@@ -216,7 +219,7 @@ export default function MenuBarOpen({ onIconClick }: MenuBarOpenProps) {
           </div>
           <div
             className="adminMenuItemOpen"
-            onClick={() => navigate("/admin/ingestion")}
+            onClick={() => navigate("/adminIngestion")}
             style={{ cursor: "pointer" }}
           >
             <div className="menuItemIconContainer">
@@ -237,12 +240,12 @@ export default function MenuBarOpen({ onIconClick }: MenuBarOpenProps) {
           </div>
           <div
             className="adminMenuItemOpen"
-            onClick={() => navigate("/admin/rule")}
+            onClick={() => navigate("/adminrules")}
             style={{ cursor: "pointer" }}
           >
             <div className="menuItemIconContainer">
               <img
-                src="/gearGrey.svg"
+                src={isAdminRules ? "/gearBlue.svg" : "/gearGrey.svg"}
                 alt="Rule Icon"
                 width={24}
                 height={18}
@@ -251,9 +254,9 @@ export default function MenuBarOpen({ onIconClick }: MenuBarOpenProps) {
             </div>
             <span
               className="menuItemText"
-              style={{ color: isAdminRule ? "var(--blue)" : "var(--textGrey)" }}
+              style={{ color: isAdminRules ? "var(--blue)" : "var(--textGrey)" }}
             >
-              Rule
+              Rules
             </span>
           </div>
         </div>

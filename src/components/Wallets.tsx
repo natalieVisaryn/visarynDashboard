@@ -1,18 +1,37 @@
+import { useCallback, useState } from "react";
 import PageHeader from "./PageHeader";
 import PageLayout from "./PageLayout";
 import WalletSearch from "./WalletSearch";
 import WalletSearchResultTable from "./WalletSearchResultTable";
 
-export default function Wallets() {
+type WalletsProps = {
+  /** When true (e.g. `/walletScreenings`), show all orgs’ screenings and admin table columns. */
+  adminView?: boolean;
+};
+
+export default function Wallets({ adminView = false }: WalletsProps) {
+  const [screeningsRefreshKey, setScreeningsRefreshKey] = useState(0);
+  const [bulkHighlightIds, setBulkHighlightIds] = useState<string[]>([]);
+  const clearBulkHighlight = useCallback(() => setBulkHighlightIds([]), []);
+
   return (
     <>
       <div>
-        <title>Wallets</title>
-        <meta name="description" content="API Keys" />
+        <title>
+          {adminView ? "Wallet screenings — all organizations" : "Wallets"}
+        </title>
+        <meta
+          name="description"
+          content={
+            adminView
+              ? "Wallet screenings across all organizations"
+              : "API Keys"
+          }
+        />
         <link rel="icon" href="/visarynIcon.svg" type="image/svg+xml" />
       </div>
       <PageLayout>
-        <PageHeader pageTitle="Wallets" />
+        <PageHeader pageTitle={adminView ? "Wallet screenings" : "Wallets"} />
         <div
           style={{
             paddingTop: "40px",
@@ -25,8 +44,21 @@ export default function Wallets() {
             boxSizing: "border-box",
           }}
         >
-          <WalletSearch />
-          <WalletSearchResultTable />
+          <WalletSearch
+            adminView={adminView}
+            onBulkScreeningComplete={(outcome, screeningIds) => {
+              if (outcome === "success") {
+                setScreeningsRefreshKey((k) => k + 1);
+                if (screeningIds?.length) setBulkHighlightIds(screeningIds);
+              }
+            }}
+          />
+          <WalletSearchResultTable
+            adminView={adminView}
+            refreshKey={screeningsRefreshKey}
+            bulkHighlightIds={bulkHighlightIds}
+            onBulkHighlightConsumed={clearBulkHighlight}
+          />
         </div>
       </PageLayout>
     </>
