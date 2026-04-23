@@ -6,6 +6,10 @@ import Wallets from './components/Wallets';
 import ScreeningDetail from './components/ScreeningDetail';
 import ApiKeys from './components/ApiKeys';
 import OrgBlacklist from './components/OrgBlacklist';
+import AdminBlacklist from './components/AdminBlacklist';
+import AdminApiUsage from './components/AdminApiUsage';
+import AdminIngestion from './components/AdminIngestion';
+import AdminRules from './components/AdminRules';
 import BlacklistDetail from './components/BlacklistDetail';
 import ProtectedRoute from './components/ProtectedRoute';
 import HomeRedirect from './components/HomeRedirect.tsx';
@@ -36,6 +40,46 @@ function App() {
             }
           />
           <Route
+            path="/walletScreenings"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <Wallets adminView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/adminBlacklist"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <AdminBlacklist />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/adminApiUsage"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <AdminApiUsage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/adminIngestion"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <AdminIngestion />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/adminrules"
+            element={
+              <ProtectedRoute requiredRole="ADMIN">
+                <AdminRules />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
@@ -54,7 +98,7 @@ function App() {
           <Route
             path="/screenings/:screeningId"
             element={
-              <ProtectedRoute requiredRole="USER">
+              <ProtectedRoute allowedRoles={["USER", "ADMIN"]}>
                 <ScreeningDetail />
               </ProtectedRoute>
             }

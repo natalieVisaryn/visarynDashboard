@@ -12,15 +12,19 @@ export default function MenuBarClosed({ onIconClick }: MenuBarClosedProps) {
   const { isAdmin } = useUser();
 
   const isDashboard = location.pathname === "/dashboard" || location.pathname === "/";
-  const isWalletSearch = location.pathname === "/screenings";
+  const isWalletSearch =
+    location.pathname === "/screenings" || location.pathname.startsWith("/screenings/");
   const isBlacklist = location.pathname === "/blacklist";
   const isApiKeys = location.pathname === "/apiKeys";
 
   const isAdminOverview = location.pathname === "/admin";
-  const isAdminScreenings = location.pathname === "/admin/screenings";
-  const isAdminBlacklist = location.pathname === "/admin/blacklist";
-  const isAdminApiUsage = location.pathname === "/admin/api-usage";
-  const isAdminIngestion = location.pathname === "/admin/ingestion";
+  /** Admin list lives at `/walletScreenings`; admins can also use org `/screenings` + detail under `/screenings/:id`. */
+  const isAdminScreenings =
+    location.pathname === "/walletScreenings" || isWalletSearch;
+  const isAdminBlacklist = location.pathname === "/adminBlacklist";
+  const isAdminApiUsage = location.pathname === "/adminApiUsage";
+  const isAdminIngestion = location.pathname === "/adminIngestion";
+  const isAdminRules = location.pathname === "/adminrules";
 
   return (
     <div className="menuBarClosedContainer menuBarCommon">
@@ -103,7 +107,7 @@ export default function MenuBarClosed({ onIconClick }: MenuBarClosedProps) {
             style={{ cursor: "pointer" }}
           >
             <img
-              src={isAdminOverview ? "/upBarChartBlue.svg" : "/upBarChartGrey.svg"}
+              src={isAdminOverview ? "/glassWithStatsBlue.svg" : "/glassWithStatsGrey.svg"}
               alt="Overview"
               width={24}
               height={18}
@@ -111,7 +115,7 @@ export default function MenuBarClosed({ onIconClick }: MenuBarClosedProps) {
           </div>
           <div
             className="adminMenuItemClosed"
-            onClick={() => navigate("/admin/screenings")}
+            onClick={() => navigate("/walletScreenings")}
             style={{ cursor: "pointer" }}
           >
             <img
@@ -123,7 +127,7 @@ export default function MenuBarClosed({ onIconClick }: MenuBarClosedProps) {
           </div>
           <div
             className="adminMenuItemClosed"
-            onClick={() => navigate("/admin/blacklist")}
+            onClick={() => navigate("/adminBlacklist")}
             style={{ cursor: "pointer" }}
           >
             <img
@@ -135,7 +139,7 @@ export default function MenuBarClosed({ onIconClick }: MenuBarClosedProps) {
           </div>
           <div
             className="adminMenuItemClosed"
-            onClick={() => navigate("/admin/api-usage")}
+            onClick={() => navigate("/adminApiUsage")}
             style={{ cursor: "pointer" }}
           >
             <img
@@ -147,7 +151,7 @@ export default function MenuBarClosed({ onIconClick }: MenuBarClosedProps) {
           </div>
           <div
             className="adminMenuItemClosed"
-            onClick={() => navigate("/admin/ingestion")}
+            onClick={() => navigate("/adminIngestion")}
             style={{ cursor: "pointer" }}
           >
             <img
@@ -159,12 +163,12 @@ export default function MenuBarClosed({ onIconClick }: MenuBarClosedProps) {
           </div>
           <div
             className="adminMenuItemClosed"
-            onClick={() => navigate("/admin/rule")}
+            onClick={() => navigate("/adminrules")}
             style={{ cursor: "pointer" }}
           >
             <img
-              src="/gearGrey.svg"
-              alt="Rule"
+              src={isAdminRules ? "/gearBlue.svg" : "/gearGrey.svg"}
+              alt="Rules"
               width={24}
               height={18}
             />

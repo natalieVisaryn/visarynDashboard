@@ -4,6 +4,7 @@ import PageHeader from "./PageHeader";
 import PageLayout from "./PageLayout";
 import AddEditOrgBlacklist from "./AddEditOrgBlacklist";
 import { API_BASE_URL } from "../utils/auth";
+import { useUser } from "../context/userContext";
 
 type BlacklistEntry = {
   id: string;
@@ -82,6 +83,7 @@ const fieldValue: React.CSSProperties = {
 };
 
 export default function BlacklistDetail() {
+  const { isAdmin } = useUser();
   const { blacklistEntryId } = useParams<{ blacklistEntryId: string }>();
   const navigate = useNavigate();
   const [entry, setEntry] = useState<BlacklistEntry | null>(null);
@@ -145,7 +147,7 @@ export default function BlacklistDetail() {
         throw new Error(data?.error || `Request failed (${res.status})`);
       }
 
-      navigate("/blacklist");
+      navigate(isAdmin ? "/adminBlacklist" : "/blacklist");
     } catch (err) {
       setDeleteMessage(err instanceof Error ? err.message : "Failed to delete entry");
       setDeleteMessageIsError(true);
@@ -194,7 +196,7 @@ export default function BlacklistDetail() {
           >
             {/* Back button */}
             <button
-              onClick={() => navigate("/blacklist")}
+              onClick={() => navigate(isAdmin ? "/adminBlacklist" : "/blacklist")}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -213,7 +215,9 @@ export default function BlacklistDetail() {
               }}
             >
               <img src="/backArrowBlue.svg" alt="" style={{ width: "16px", height: "16px" }} />{" "}
-              {entry && !entry.isAdminListed ? "Back to Organization Blacklist" : "Back to Blacklist"}
+              {isAdmin || (entry && entry.isAdminListed)
+                ? "Back to Blacklist"
+                : "Back to Organization Blacklist"}
             </button>
 
             {loading ? (
@@ -314,8 +318,8 @@ export default function BlacklistDetail() {
                     </div>
                   </div>
 
-                  {/* Action buttons (org entries only) */}
-                  {entry.orgId && !entry.isAdminListed && (
+                  {/* Org users: org-scoped non-admin rows. Admins: any row (API enforces). */}
+                  {(isAdmin || (entry.orgId && !entry.isAdminListed)) && (
                   <div style={{ display: "flex", gap: "12px" }}>
                     <button
                       onClick={() => setShowEditModal(true)}

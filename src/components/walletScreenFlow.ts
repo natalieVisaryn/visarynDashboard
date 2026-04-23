@@ -102,3 +102,43 @@ export async function requestWalletScreenId(address: string): Promise<RequestWal
     return { ok: false, banner: genericErrorBanner() };
   }
 }
+
+export type RequestBulkWalletScoresResult =
+  | { ok: true; screeningIds: string[] }
+  | { ok: false };
+
+export async function requestBulkWalletScores(addresses: string[]): Promise<RequestBulkWalletScoresResult> {
+  if (addresses.length === 0) return { ok: false };
+  try {
+    const res = await fetch(`${API_BASE_URL}/backend/getWalletScore`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ addresses }),
+    });
+
+    if (res.status !== 200) {
+      await readWalletScoreErrorMessage(res);
+      return { ok: false };
+    }
+
+    let data: unknown;
+    try {
+      data = await res.json();
+    } catch {
+      return { ok: false };
+    }
+    if (!Array.isArray(data) || data.length !== addresses.length) {
+      return { ok: false };
+    }
+    const screeningIds: string[] = [];
+    for (const item of data) {
+      const id = (item as { id?: unknown })?.id;
+      if (typeof id !== "string" || !id.trim()) return { ok: false };
+      screeningIds.push(id.trim());
+    }
+    return { ok: true, screeningIds };
+  } catch {
+    return { ok: false };
+  }
+}

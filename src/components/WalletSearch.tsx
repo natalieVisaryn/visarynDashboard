@@ -2,17 +2,29 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LoadingSpinner from "./LoadingSpinner";
 import WalletScreenBanner from "./WalletScreenBanner";
+import BulkWalletScreeningModal from "./BulkWalletScreeningModal";
 import {
   type WalletScreenBannerState,
   validateWalletInputForScreen,
   requestWalletScreenId,
 } from "./walletScreenFlow";
 
-export default function WalletScreenResultsTable() {
+type WalletSearchProps = {
+  /** When true, user reached this via the admin `/walletScreenings` route. */
+  adminView?: boolean;
+  onBulkScreeningComplete?: (outcome: "success" | "error", screeningIds?: string[]) => void;
+};
+
+export default function WalletScreenResultsTable({
+  adminView = false,
+  onBulkScreeningComplete,
+}: WalletSearchProps) {
   const navigate = useNavigate();
   const [walletAddress, setWalletAddress] = useState("");
   const [banner, setBanner] = useState<WalletScreenBannerState | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showBulkWalletModal, setShowBulkWalletModal] = useState(false);
+  const [bulkModalKey, setBulkModalKey] = useState(0);
 
   const dismissBanner = () => setBanner(null);
 
@@ -39,6 +51,7 @@ export default function WalletScreenResultsTable() {
   };
 
   return (
+    <>
     <div
       style={{
         width: "100%",
@@ -63,18 +76,31 @@ export default function WalletScreenResultsTable() {
       >
         <div
           style={{
-            fontFamily: '"Hero New", sans-serif',
-            fontWeight: 700,
-            fontSize: "18px",
-            lineHeight: "100%",
-            color: "var(--textWhite)",
+            display: "flex",
+            flexDirection: "column",
+            gap: adminView ? "8px" : "0",
             paddingTop: "10px",
           }}
         >
-          Screen Wallet Addresses
+          <div
+            style={{
+              fontFamily: '"Hero New", sans-serif',
+              fontWeight: 700,
+              fontSize: "18px",
+              lineHeight: "100%",
+              color: "var(--textWhite)",
+            }}
+          >
+            Screen Wallet Addresses
+          </div>
+
         </div>
         <button
           type="button"
+          onClick={() => {
+            setBulkModalKey((k) => k + 1);
+            setShowBulkWalletModal(true);
+          }}
           style={{
             display: "flex",
             alignItems: "center",
@@ -215,5 +241,13 @@ export default function WalletScreenResultsTable() {
         </div>
       </div>
     </div>
+
+    <BulkWalletScreeningModal
+      key={bulkModalKey}
+      isOpen={showBulkWalletModal}
+      onClose={() => setShowBulkWalletModal(false)}
+      onBulkFlowComplete={onBulkScreeningComplete}
+    />
+    </>
   );
 }

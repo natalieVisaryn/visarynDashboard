@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { API_BASE_URL } from "../utils/auth";
+import { useUser } from "../context/userContext";
 
 type AddEditOrgBlacklistProps = {
   isOpen: boolean;
@@ -50,6 +51,7 @@ const requiredDot: React.CSSProperties = {
 };
 
 export default function AddEditOrgBlacklist({ isOpen, onClose, onSuccess, editEntryId, initialAddress = "", initialChain = "ETH" }: AddEditOrgBlacklistProps) {
+  const { isAdmin } = useUser();
   const [address, setAddress] = useState(initialAddress);
   const [chain, setChain] = useState(initialChain);
   const [confidence, setConfidence] = useState("");
@@ -192,7 +194,7 @@ export default function AddEditOrgBlacklist({ isOpen, onClose, onSuccess, editEn
           body: JSON.stringify(body),
         });
       } else {
-        const body: Record<string, string | null> = {
+        const body: Record<string, string | boolean | null> = {
           walletAddress: address.trim(),
           chain,
           category,
@@ -202,6 +204,9 @@ export default function AddEditOrgBlacklist({ isOpen, onClose, onSuccess, editEn
         };
         if (caseReferenceId.trim()) {
           body.caseReferenceId = caseReferenceId.trim();
+        }
+        if (isAdmin) {
+          body.isAdminListed = true;
         }
 
         res = await fetch(`${API_BASE_URL}/backend/createVisarynBlacklist`, {
