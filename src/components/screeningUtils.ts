@@ -92,14 +92,16 @@ function hasSystemBlacklistMatch(factors: string[]): boolean {
 }
 
 /**
- * Decision basis for UI: evaluate in order; first match wins.
- * Falls back to "N/A" if confidence is neither HIGH nor LOW after prior rules.
+ * Decision basis for UI: evaluate in order; first match wins (short-circuit).
+ * Order: LOW confidence → Data Limitations; then risk-factor tiers; then HIGH → Low Risk; else N/A.
  */
 export function getComputedDecisionBasis(
   riskFactors: string[],
   decisionConfidence: string,
 ): string {
   const f = riskFactors;
+  const conf = decisionConfidence.trim().toUpperCase();
+  if (conf === "LOW") return "Data Limitations";
   if (
     riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.SANCTIONS_DIRECT) ||
     riskFactorIncludes(f, DECISION_RATIONALE_FACTORS.ENFORCEMENT_DIRECT)
@@ -121,9 +123,7 @@ export function getComputedDecisionBasis(
   ) {
     return "Behavioral / Heuristic Signals";
   }
-  const conf = decisionConfidence.trim().toUpperCase();
   if (conf === "HIGH") return "Low Risk";
-  if (conf === "LOW") return "Data Limitations";
   return "N/A";
 }
 

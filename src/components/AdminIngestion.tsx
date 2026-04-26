@@ -26,7 +26,7 @@ const tableHeaderCell: React.CSSProperties = {
 const tableCell: React.CSSProperties = {
   color: "var(--textWhite)",
   fontSize: "14px",
-  fontWeight: 500,
+  fontWeight: 400,
 };
 
 const tableCellMuted: React.CSSProperties = {
