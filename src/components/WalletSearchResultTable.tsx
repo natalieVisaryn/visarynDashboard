@@ -47,7 +47,7 @@ const GET_ADMIN_WALLET_SCORES_MAX_ROWS_PER_RESPONSE = 100;
 /** #2cc740 at 0.5 opacity — bulk screening row highlight */
 const BULK_ROW_HIGHLIGHT = "rgba(44, 199, 64, 0.2)";
 /** Longer duration + ease-out so the green highlight eases out gradually */
-const BULK_HIGHLIGHT_FADE_MS = 1000;
+const BULK_HIGHLIGHT_FADE_MS = 500;
 
 function mapWalletScoreToRow(score: WalletScore, screenedBy = ""): TableRow {
   return {
